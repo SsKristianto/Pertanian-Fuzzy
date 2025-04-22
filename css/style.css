@@ -1,43 +1,30 @@
 body {
     font-family: Arial, sans-serif;
-    background-color: #f0f8ff;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 0;
     text-align: center;
-    padding: 20px;
 }
 
-.container {
-    width: 80%;
-    margin: 0 auto;
-}
-
-h1,
-h2 {
-    color: #4CAF50;
-}
-
-label {
-    margin-right: 10px;
+form {
+    margin-top: 20px;
 }
 
 select {
-    margin-bottom: 20px;
-    padding: 5px;
+    padding: 10px;
+    font-size: 16px;
+    margin-bottom: 10px;
 }
 
 button {
+    padding: 10px 20px;
+    font-size: 16px;
     background-color: #4CAF50;
     color: white;
-    padding: 10px 20px;
     border: none;
     cursor: pointer;
 }
 
 button:hover {
     background-color: #45a049;
-}
-
-#result {
-    margin-top: 20px;
-    font-size: 18px;
-    font-weight: bold;
 }

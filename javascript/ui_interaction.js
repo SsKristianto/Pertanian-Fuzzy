@@ -1,15 +1,20 @@
-document.getElementById("submitBtn").addEventListener("click", function() {
-    const humidity = document.getElementById("humidity").value === 'low' ? 20 :
-        document.getElementById("humidity").value === 'medium' ? 50 : 80;
-    const temperature = document.getElementById("temperature").value === 'low' ? 15 :
-        document.getElementById("temperature").value === 'medium' ? 25 : 35;
-    const light = document.getElementById("light").value === 'low' ? 30 :
-        document.getElementById("light").value === 'medium' ? 60 : 90;
+function submitParameters() {
+    const soil_moisture = document.getElementById('soil_moisture').value;
+    const air_temperature = document.getElementById('air_temperature').value;
+    const light_intensity = document.getElementById('light_intensity').value;
+    const humidity = document.getElementById('humidity').value;
 
-    const result = fuzzyLogic(humidity, temperature, light);
-
-    // Menampilkan hasil ke UI
-    document.getElementById("irrigation-duration").textContent = result.irrigation;
-    document.getElementById("temperature-setting").textContent = result.temp_setting;
-    document.getElementById("light-control").textContent = result.light_control;
-});
+    fetch('php/fuzzy_logic.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: `soil_moisture=${soil_moisture}&air_temperature=${air_temperature}&light_intensity=${light_intensity}&humidity=${humidity}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('irrigation_duration').innerText = `Durasi Irigasi: ${data.irrigation_duration}`;
+            document.getElementById('temperature_setting').innerText = `Pengaturan Suhu: ${data.temperature_setting}`;
+            document.getElementById('light_control').innerText = `Kontrol Pencahayaan: ${data.light_control}`;
+        });
+}

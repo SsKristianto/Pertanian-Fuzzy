@@ -1,41 +1,25 @@
 <?php
-// Fungsi untuk mengkonversi nilai crisp ke nilai fuzzy
-function fuzzify($value, $min, $max) {
-    if ($value <= $min) return 0;
-    if ($value >= $max) return 1;
-    return ($value - $min) / ($max - $min);
+include('connect.php');
+
+// Fungsi fuzzy sederhana untuk mendefinisikan aturan dan inferensi
+function calculate_fuzzy_output($soil_moisture, $air_temperature, $light_intensity, $humidity) {
+    // Menentukan hasil output berdasarkan input (contoh sederhana)
+    if ($soil_moisture == "kering" && $air_temperature == "panas") {
+        return ['irrigation_duration' => 'lama', 'temperature_setting' => 'menurunkan', 'light_control' => 'terang'];
+    } elseif ($soil_moisture == "sedang" && $air_temperature == "sedang") {
+        return ['irrigation_duration' => 'sedang', 'temperature_setting' => 'mempertahankan', 'light_control' => 'sedang'];
+    } else {
+        return ['irrigation_duration' => 'singkat', 'temperature_setting' => 'menaikkan', 'light_control' => 'redyup'];
+    }
 }
 
-// Fungsi untuk menghitung hasil dari kontrol berdasarkan logika fuzzy
-function fuzzy_control($humidity, $temperature, $light) {
-    // Fuzzifikasi setiap parameter
-    $humidity_fuzzy = fuzzify($humidity, 0, 100);
-    $temperature_fuzzy = fuzzify($temperature, 10, 40);
-    $light_fuzzy = fuzzify($light, 0, 100);
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $soil_moisture = $_POST['soil_moisture'];
+    $air_temperature = $_POST['air_temperature'];
+    $light_intensity = $_POST['light_intensity'];
+    $humidity = $_POST['humidity'];
 
-    // Aturan Fuzzy
-    if ($humidity_fuzzy <= 0.3 && $temperature_fuzzy >= 0.7) {
-        $irrigation = "Lama";
-    } else {
-        $irrigation = "Sedang";
-    }
-
-    if ($temperature_fuzzy >= 0.7) {
-        $temp_setting = "Menaikkan";
-    } else {
-        $temp_setting = "Menurunkan";
-    }
-
-    if ($light_fuzzy <= 0.3) {
-        $light_control = "Terang";
-    } else {
-        $light_control = "Sedang";
-    }
-
-    return [
-        'irrigation' => $irrigation,
-        'temp_setting' => $temp_setting,
-        'light_control' => $light_control
-    ];
+    $output = calculate_fuzzy_output($soil_moisture, $air_temperature, $light_intensity, $humidity);
+    echo json_encode($output);
 }
 ?>
