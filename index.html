@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Kontrol Cerdas Tanaman Tomat</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <div class="container">
+        <h1>Sistem Kontrol Cerdas untuk Tanaman Tomat</h1>
+
+        <h2>Pengaturan Parameter Lingkungan</h2>
+
+        <label for="humidity">Kelembaban Tanah:</label>
+        <select id="humidity">
+            <option value="low">Kering</option>
+            <option value="medium">Sedang</option>
+            <option value="high">Basah</option>
+        </select>
+
+        <label for="temperature">Suhu Udara:</label>
+        <select id="temperature">
+            <option value="low">Dingin</option>
+            <option value="medium">Sedang</option>
+            <option value="high">Panas</option>
+        </select>
+
+        <label for="light">Intensitas Cahaya:</label>
+        <select id="light">
+            <option value="low">Rendah</option>
+            <option value="medium">Sedang</option>
+            <option value="high">Tinggi</option>
+        </select>
+
+        <button id="submitBtn">Hitung Kontrol</button>
+
+        <h2>Hasil Kontrol</h2>
+        <div id="result">
+            <p>Durasi Irigasi: <span id="irrigation-duration"></span></p>
+            <p>Pengaturan Suhu: <span id="temperature-setting"></span></p>
+            <p>Kontrol Pencahayaan: <span id="light-control"></span></p>
+        </div>
+
+        <script src="javascript/fuzzy_logic.js"></script>
+        <script src="javascript/ui_interaction.js"></script>
+    </div>
+</body>
+
+</html>
