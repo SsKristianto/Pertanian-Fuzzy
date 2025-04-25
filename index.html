@@ -12,33 +12,50 @@
     <h1>Smart Farming - Kontrol Cerdas Tomat</h1>
 
     <form id="parameterForm">
-        <label for="soil_moisture">Kelembaban Tanah:</label>
-        <select id="soil_moisture" name="soil_moisture">
-            <option value="kering">Kering</option>
-            <option value="sedang">Sedang</option>
-            <option value="basah">Basah</option>
+        <h2>Pilih Mode Input</h2>
+        <label for="input_mode">Pilih mode input:</label>
+        <select id="input_mode" name="input_mode" onchange="toggleInputMode()">
+            <option value="manual">Manual</option>
+            <option value="automatic">Otomatis (Data Cuaca)</option>
         </select><br>
 
-        <label for="air_temperature">Suhu Udara:</label>
-        <select id="air_temperature" name="air_temperature">
-            <option value="dingin">Dingin</option>
-            <option value="sedang">Sedang</option>
-            <option value="panas">Panas</option>
-        </select><br>
+        <!-- Manual Input Fields -->
+        <div id="manualInput" style="display:block;">
+            <label for="soil_moisture">Kelembaban Tanah:</label>
+            <select id="soil_moisture" name="soil_moisture">
+                <option value="kering">Kering</option>
+                <option value="sedang">Sedang</option>
+                <option value="basah">Basah</option>
+            </select><br>
 
-        <label for="light_intensity">Intensitas Cahaya:</label>
-        <select id="light_intensity" name="light_intensity">
-            <option value="rendah">Rendah</option>
-            <option value="sedang">Sedang</option>
-            <option value="tinggi">Tinggi</option>
-        </select><br>
+            <label for="air_temperature">Suhu Udara:</label>
+            <select id="air_temperature" name="air_temperature">
+                <option value="dingin">Dingin</option>
+                <option value="sedang">Sedang</option>
+                <option value="panas">Panas</option>
+            </select><br>
 
-        <label for="humidity">Kelembaban Udara:</label>
-        <select id="humidity" name="humidity">
-            <option value="rendah">Rendah</option>
-            <option value="sedang">Sedang</option>
-            <option value="tinggi">Tinggi</option>
-        </select><br>
+            <label for="light_intensity">Intensitas Cahaya:</label>
+            <select id="light_intensity" name="light_intensity">
+                <option value="rendah">Rendah</option>
+                <option value="sedang">Sedang</option>
+                <option value="tinggi">Tinggi</option>
+            </select><br>
+
+            <label for="humidity">Kelembaban Udara:</label>
+            <select id="humidity" name="humidity">
+                <option value="rendah">Rendah</option>
+                <option value="sedang">Sedang</option>
+                <option value="tinggi">Tinggi</option>
+            </select><br>
+        </div>
+
+        <!-- Automatic Input Fields (Hanya ditampilkan jika pilih otomatis) -->
+        <div id="automaticInput" style="display:none;">
+            <h3>Data Cuaca Otomatis</h3>
+            <p id="weatherData">Menunggu data cuaca...</p>
+            <button type="button" onclick="fetchWeatherData()">Ambil Data Cuaca</button><br><br>
+        </div>
 
         <button type="button" onclick="submitParameters()">Hitung Output</button>
     </form>
@@ -50,6 +67,7 @@
         <p id="light_control">Kontrol Pencahayaan: </p>
     </div>
 
+    <script src="javascript/weather_integration.js"></script>
     <script src="javascript/ui_interaction.js"></script>
 </body>
 
