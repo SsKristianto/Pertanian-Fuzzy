@@ -166,23 +166,7 @@ const DashboardExtension = {
             </div>
         `;
         
-        const placeholder = document.getElementById('dashboard-container-placeholder');
-    if (placeholder) {
-        // Replace the placeholder with the dashboard section
-        placeholder.replaceWith(dashboardSection);
-    } else {
-        // Fallback: find container and append
-        const dashboardPanel = document.getElementById('dashboard-panel');
-        if (dashboardPanel) {
-            dashboardPanel.appendChild(dashboardSection);
-        } else {
-            console.error('Cannot find dashboard panel to attach dashboard');
-        }
-    }
-
-    // Tambahkan stylesheet
-    this.addDashboardStylesheet();
-
+        
         // Sisipkan dashboard setelah simulasi atau tampilan lainnya
         const simulationContainer = document.querySelector('.simulation-container');
 
