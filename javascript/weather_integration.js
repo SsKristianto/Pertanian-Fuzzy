@@ -19,17 +19,16 @@ const WeatherIntegration = {
 
     // Konfigurasi
     config: {
-        // Koordinat lokasi (default: Jakarta)
+        // Coordinates (default: Jakarta)
         latitude: -6.2088,
         longitude: 106.8456,
 
-        // Interval update dalam milidetik (10 menit)
+        // Update interval in milliseconds (10 minutes)
         updateInterval: 10 * 60 * 1000,
 
-        // Format tanggal dan waktu
+        // Format date only - FIX: removed timeStyle, using only dateStyle
         dateTimeFormat: {
-            dateStyle: 'medium',
-            timeStyle: 'short'
+            dateStyle: 'medium'
         }
     },
 
@@ -96,61 +95,72 @@ const WeatherIntegration = {
         // 
         // Untuk demo ini, kita akan mensimulasikan respon API dengan data cuaca acak
         setTimeout(() => {
-            // Simulasi data cuaca
-            const now = new Date();
-            this.weatherData = {
-                location: {
-                    name: "Jakarta",
-                    region: "DKI Jakarta",
-                    country: "Indonesia"
-                },
-                current: {
-                    temp_c: this.getRandomValue(25, 35, 1), // 25-35 °C
-                    humidity: this.getRandomValue(60, 90, 0), // 60-90%
-                    light_intensity: this.getRandomValue(300, 900, 0), // 300-900 lux
-                    soil_moisture: this.getRandomValue(30, 80, 0), // 30-80%
-                    condition: {
-                        text: this.getRandomWeatherCondition(),
-                        icon: this.getRandomWeatherIcon()
+            try {
+                // Simulasi data cuaca
+                const now = new Date();
+                this.weatherData = {
+                    location: {
+                        name: "Jakarta",
+                        region: "DKI Jakarta",
+                        country: "Indonesia"
                     },
-                    precip_mm: this.getRandomValue(0, 10, 1),
-                    wind_kph: this.getRandomValue(5, 20, 1),
-                    cloud: this.getRandomValue(0, 100, 0),
-                    last_updated: now.toISOString()
-                },
-                forecast: {
-                    forecastday: [{
-                        date: now.toISOString().split('T')[0],
-                        day: {
-                            maxtemp_c: this.getRandomValue(30, 38, 1),
-                            mintemp_c: this.getRandomValue(22, 28, 1),
-                            daily_chance_of_rain: this.getRandomValue(0, 100, 0),
-                            condition: {
-                                text: this.getRandomWeatherCondition(),
-                                icon: this.getRandomWeatherIcon()
+                    current: {
+                        temp_c: this.getRandomValue(25, 35, 1), // 25-35 °C
+                        humidity: this.getRandomValue(60, 90, 0), // 60-90%
+                        light_intensity: this.getRandomValue(300, 900, 0), // 300-900 lux
+                        soil_moisture: this.getRandomValue(30, 80, 0), // 30-80%
+                        condition: {
+                            text: this.getRandomWeatherCondition(),
+                            icon: this.getRandomWeatherIcon()
+                        },
+                        precip_mm: this.getRandomValue(0, 10, 1),
+                        wind_kph: this.getRandomValue(5, 20, 1),
+                        cloud: this.getRandomValue(0, 100, 0),
+                        last_updated: now.toISOString()
+                    },
+                    forecast: {
+                        forecastday: [{
+                            date: now.toISOString().split('T')[0],
+                            day: {
+                                maxtemp_c: this.getRandomValue(30, 38, 1),
+                                mintemp_c: this.getRandomValue(22, 28, 1),
+                                daily_chance_of_rain: this.getRandomValue(0, 100, 0),
+                                condition: {
+                                    text: this.getRandomWeatherCondition(),
+                                    icon: this.getRandomWeatherIcon()
+                                }
                             }
-                        }
-                    }]
+                        }]
+                    }
+                };
+
+                // Simpan data ke localStorage
+                localStorage.setItem('weatherData', JSON.stringify(this.weatherData));
+                localStorage.setItem('weatherLastFetch', now.getTime().toString());
+
+                // Update status
+                this.fetchStatus.lastFetch = now;
+                this.fetchStatus.isLoading = false;
+
+                // Tampilkan data cuaca
+                this.displayWeatherData();
+
+                // Pertimbangkan untuk secara otomatis menerapkan nilai cuaca
+                // this.applyWeatherToInputs();
+
+                // Hapus indikator loading
+                if (weatherSection) {
+                    weatherSection.classList.remove('loading');
                 }
-            };
+            } catch (error) {
+                console.error('Error generating weather data:', error);
+                this.fetchStatus.isLoading = false;
+                this.fetchStatus.error = error.message;
 
-            // Simpan data ke localStorage
-            localStorage.setItem('weatherData', JSON.stringify(this.weatherData));
-            localStorage.setItem('weatherLastFetch', now.getTime().toString());
-
-            // Update status
-            this.fetchStatus.lastFetch = now;
-            this.fetchStatus.isLoading = false;
-
-            // Tampilkan data cuaca
-            this.displayWeatherData();
-
-            // Pertimbangkan untuk secara otomatis menerapkan nilai cuaca
-            this.applyWeatherToInputs();
-
-            // Hapus indikator loading
-            if (weatherSection) {
-                weatherSection.classList.remove('loading');
+                // Hapus indikator loading
+                if (weatherSection) {
+                    weatherSection.classList.remove('loading');
+                }
             }
         }, 1500); // Simulasi delay jaringan 1.5 detik
     },
@@ -183,113 +193,147 @@ const WeatherIntegration = {
             }
         }
 
-        // Format tanggal dan waktu update terakhir
-        const lastUpdated = new Date(this.weatherData.current.last_updated);
-        const formattedDate = lastUpdated.toLocaleDateString('id-ID', this.config.dateTimeFormat);
+        try {
+            // Format tanggal dan waktu update terakhir - FIX: Handle date formatting safely
+            const lastUpdated = new Date(this.weatherData.current.last_updated);
+            let formattedDate;
 
-        // Isi data cuaca ke UI
-        weatherSection.innerHTML = `
-            <h2>Data Cuaca Terkini</h2>
-            <div class="weather-container">
-                <div class="weather-current">
-                    <div class="weather-header">
-                        <div class="weather-location">
-                            <h3>${this.weatherData.location.name}, ${this.weatherData.location.country}</h3>
-                            <p class="weather-updated">Update terakhir: ${formattedDate}</p>
+            try {
+                formattedDate = lastUpdated.toLocaleDateString('id-ID', this.config.dateTimeFormat);
+            } catch (error) {
+                console.warn('Error formatting date with options, falling back to default format', error);
+                formattedDate = lastUpdated.toLocaleDateString('id-ID');
+            }
+
+            // Isi data cuaca ke UI
+            weatherSection.innerHTML = `
+                <h2>Data Cuaca Terkini</h2>
+                <div class="weather-container">
+                    <div class="weather-current">
+                        <div class="weather-header">
+                            <div class="weather-location">
+                                <h3>${this.weatherData.location.name}, ${this.weatherData.location.country}</h3>
+                                <p class="weather-updated">Update terakhir: ${formattedDate}</p>
+                            </div>
+                            <div class="weather-condition">
+                                <img src="${this.weatherData.current.condition.icon}" alt="${this.weatherData.current.condition.text}">
+                                <p>${this.weatherData.current.condition.text}</p>
+                            </div>
                         </div>
-                        <div class="weather-condition">
-                            <img src="${this.weatherData.current.condition.icon}" alt="${this.weatherData.current.condition.text}">
-                            <p>${this.weatherData.current.condition.text}</p>
+                        
+                        <div class="weather-data">
+                            <div class="weather-item">
+                                <div class="weather-icon"><i class="fas fa-thermometer-half"></i></div>
+                                <div class="weather-value">
+                                    <p>${this.weatherData.current.temp_c}°C</p>
+                                    <span>Suhu</span>
+                                </div>
+                            </div>
+                            
+                            <div class="weather-item">
+                                <div class="weather-icon"><i class="fas fa-tint"></i></div>
+                                <div class="weather-value">
+                                    <p>${this.weatherData.current.humidity}%</p>
+                                    <span>Kelembaban Udara</span>
+                                </div>
+                            </div>
+                            
+                            <div class="weather-item">
+                                <div class="weather-icon"><i class="fas fa-lightbulb"></i></div>
+                                <div class="weather-value">
+                                    <p>${this.weatherData.current.light_intensity} lux</p>
+                                    <span>Intensitas Cahaya</span>
+                                </div>
+                            </div>
+                            
+                            <div class="weather-item">
+                                <div class="weather-icon"><i class="fas fa-seedling"></i></div>
+                                <div class="weather-value">
+                                    <p>${this.weatherData.current.soil_moisture}%</p>
+                                    <span>Kelembaban Tanah</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="weather-actions">
+                            <button id="refreshWeatherBtn" class="secondary-button">
+                                <i class="fas fa-sync-alt"></i> Perbarui Data
+                            </button>
+                            <button id="applyWeatherBtn" class="primary-button">
+                                <i class="fas fa-download"></i> Terapkan ke Simulator
+                            </button>
                         </div>
                     </div>
                     
-                    <div class="weather-data">
-                        <div class="weather-item">
-                            <div class="weather-icon"><i class="fas fa-thermometer-half"></i></div>
-                            <div class="weather-value">
-                                <p>${this.weatherData.current.temp_c}°C</p>
-                                <span>Suhu</span>
+                    <div class="weather-forecast">
+                        <h3>Prakiraan Hari Ini</h3>
+                        <div class="forecast-details">
+                            <div class="forecast-item">
+                                <div class="forecast-icon"><i class="fas fa-temperature-high"></i></div>
+                                <div class="forecast-value">
+                                    <p>${this.weatherData.forecast.forecastday[0].day.maxtemp_c}°C</p>
+                                    <span>Suhu Maks</span>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="weather-item">
-                            <div class="weather-icon"><i class="fas fa-tint"></i></div>
-                            <div class="weather-value">
-                                <p>${this.weatherData.current.humidity}%</p>
-                                <span>Kelembaban Udara</span>
+                            
+                            <div class="forecast-item">
+                                <div class="forecast-icon"><i class="fas fa-temperature-low"></i></div>
+                                <div class="forecast-value">
+                                    <p>${this.weatherData.forecast.forecastday[0].day.mintemp_c}°C</p>
+                                    <span>Suhu Min</span>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="weather-item">
-                            <div class="weather-icon"><i class="fas fa-lightbulb"></i></div>
-                            <div class="weather-value">
-                                <p>${this.weatherData.current.light_intensity} lux</p>
-                                <span>Intensitas Cahaya</span>
-                            </div>
-                        </div>
-                        
-                        <div class="weather-item">
-                            <div class="weather-icon"><i class="fas fa-seedling"></i></div>
-                            <div class="weather-value">
-                                <p>${this.weatherData.current.soil_moisture}%</p>
-                                <span>Kelembaban Tanah</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="weather-actions">
-                        <button id="refreshWeatherBtn" class="secondary-button">
-                            <i class="fas fa-sync-alt"></i> Perbarui Data
-                        </button>
-                        <button id="applyWeatherBtn" class="primary-button">
-                            <i class="fas fa-download"></i> Terapkan ke Simulator
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="weather-forecast">
-                    <h3>Prakiraan Hari Ini</h3>
-                    <div class="forecast-details">
-                        <div class="forecast-item">
-                            <div class="forecast-icon"><i class="fas fa-temperature-high"></i></div>
-                            <div class="forecast-value">
-                                <p>${this.weatherData.forecast.forecastday[0].day.maxtemp_c}°C</p>
-                                <span>Suhu Maks</span>
-                            </div>
-                        </div>
-                        
-                        <div class="forecast-item">
-                            <div class="forecast-icon"><i class="fas fa-temperature-low"></i></div>
-                            <div class="forecast-value">
-                                <p>${this.weatherData.forecast.forecastday[0].day.mintemp_c}°C</p>
-                                <span>Suhu Min</span>
-                            </div>
-                        </div>
-                        
-                        <div class="forecast-item">
-                            <div class="forecast-icon"><i class="fas fa-cloud-rain"></i></div>
-                            <div class="forecast-value">
-                                <p>${this.weatherData.forecast.forecastday[0].day.daily_chance_of_rain}%</p>
-                                <span>Peluang Hujan</span>
+                            
+                            <div class="forecast-item">
+                                <div class="forecast-icon"><i class="fas fa-cloud-rain"></i></div>
+                                <div class="forecast-value">
+                                    <p>${this.weatherData.forecast.forecastday[0].day.daily_chance_of_rain}%</p>
+                                    <span>Peluang Hujan</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
 
-        // Tambahkan style untuk weather section
-        this.addWeatherStyles();
+            // Tambahkan style untuk weather section
+            this.addWeatherStyles();
 
-        // Tambahkan event listener untuk tombol refresh
-        document.getElementById('refreshWeatherBtn').addEventListener('click', () => {
-            this.fetchWeatherData();
-        });
+            // Tambahkan event listener untuk tombol refresh
+            const refreshBtn = document.getElementById('refreshWeatherBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    this.fetchWeatherData();
+                });
+            }
 
-        // Tambahkan event listener untuk tombol apply
-        document.getElementById('applyWeatherBtn').addEventListener('click', () => {
-            this.applyWeatherToInputs();
-        });
+            // Tambahkan event listener untuk tombol apply
+            const applyBtn = document.getElementById('applyWeatherBtn');
+            if (applyBtn) {
+                applyBtn.addEventListener('click', () => {
+                    this.applyWeatherToInputs();
+                });
+            }
+        } catch (error) {
+            console.error('Error displaying weather data:', error);
+            weatherSection.innerHTML = `
+                <h2>Data Cuaca Terkini</h2>
+                <div class="weather-container">
+                    <p class="weather-error">Terjadi kesalahan saat menampilkan data cuaca. Silakan coba lagi.</p>
+                    <button id="refreshWeatherBtn" class="secondary-button">
+                        <i class="fas fa-sync-alt"></i> Coba Lagi
+                    </button>
+                </div>
+            `;
+
+            // Add event listener for retry
+            const refreshBtn = document.getElementById('refreshWeatherBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    this.fetchWeatherData();
+                });
+            }
+        }
     },
 
     // Terapkan data cuaca ke input simulator
@@ -298,29 +342,65 @@ const WeatherIntegration = {
             return;
         }
 
-        // Terapkan nilai dari data cuaca ke input simulator
-        document.getElementById('soil_moisture_value').value = this.weatherData.current.soil_moisture;
-        document.getElementById('soil_moisture_slider').value = this.weatherData.current.soil_moisture;
+        try {
+            // Terapkan nilai dari data cuaca ke input simulator
+            const soilMoistureValue = document.getElementById('soil_moisture_value');
+            const soilMoistureSlider = document.getElementById('soil_moisture_slider');
+            const airTemperatureValue = document.getElementById('air_temperature_value');
+            const airTemperatureSlider = document.getElementById('air_temperature_slider');
+            const lightIntensityValue = document.getElementById('light_intensity_value');
+            const lightIntensitySlider = document.getElementById('light_intensity_slider');
+            const humidityValue = document.getElementById('humidity_value');
+            const humiditySlider = document.getElementById('humidity_slider');
 
-        document.getElementById('air_temperature_value').value = this.weatherData.current.temp_c;
-        document.getElementById('air_temperature_slider').value = this.weatherData.current.temp_c;
+            if (soilMoistureValue && soilMoistureSlider) {
+                soilMoistureValue.value = this.weatherData.current.soil_moisture;
+                soilMoistureSlider.value = this.weatherData.current.soil_moisture;
+            }
 
-        document.getElementById('light_intensity_value').value = this.weatherData.current.light_intensity;
-        document.getElementById('light_intensity_slider').value = this.weatherData.current.light_intensity;
+            if (airTemperatureValue && airTemperatureSlider) {
+                airTemperatureValue.value = this.weatherData.current.temp_c;
+                airTemperatureSlider.value = this.weatherData.current.temp_c;
+            }
 
-        document.getElementById('humidity_value').value = this.weatherData.current.humidity;
-        document.getElementById('humidity_slider').value = this.weatherData.current.humidity;
+            if (lightIntensityValue && lightIntensitySlider) {
+                lightIntensityValue.value = this.weatherData.current.light_intensity;
+                lightIntensitySlider.value = this.weatherData.current.light_intensity;
+            }
 
-        // Update nilai di fuzzy logic
-        FuzzyLogic.updateInputValue('soil_moisture', this.weatherData.current.soil_moisture);
-        FuzzyLogic.updateInputValue('air_temperature', this.weatherData.current.temp_c);
-        FuzzyLogic.updateInputValue('light_intensity', this.weatherData.current.light_intensity);
-        FuzzyLogic.updateInputValue('humidity', this.weatherData.current.humidity);
+            if (humidityValue && humiditySlider) {
+                humidityValue.value = this.weatherData.current.humidity;
+                humiditySlider.value = this.weatherData.current.humidity;
+            }
 
-        // Tampilkan notifikasi
+            // Update nilai di fuzzy logic if FuzzyLogic object exists
+            if (typeof FuzzyLogic !== 'undefined') {
+                FuzzyLogic.updateInputValue('soil_moisture', this.weatherData.current.soil_moisture);
+                FuzzyLogic.updateInputValue('air_temperature', this.weatherData.current.temp_c);
+                FuzzyLogic.updateInputValue('light_intensity', this.weatherData.current.light_intensity);
+                FuzzyLogic.updateInputValue('humidity', this.weatherData.current.humidity);
+            }
+
+            // Tampilkan notifikasi
+            this.showNotification('Data cuaca berhasil diterapkan ke simulator!', 'success');
+        } catch (error) {
+            console.error('Error applying weather data to inputs:', error);
+            this.showNotification('Gagal menerapkan data cuaca ke simulator.', 'error');
+        }
+    },
+
+    // Show notification 
+    showNotification: function(message, type = 'info') {
+        // Cek jika sudah ada fungsi notifikasi di UIInteraction
+        if (typeof UIInteraction !== 'undefined' && UIInteraction.showNotification) {
+            UIInteraction.showNotification(message, type);
+            return;
+        }
+
+        // Buat elemen notifikasi
         const notification = document.createElement('div');
-        notification.className = 'notification success';
-        notification.innerHTML = 'Data cuaca berhasil diterapkan ke simulator!';
+        notification.className = `notification ${type}`;
+        notification.innerHTML = message;
 
         // Tambahkan ke body
         document.body.appendChild(notification);
@@ -338,7 +418,9 @@ const WeatherIntegration = {
 
             // Hapus elemen setelah animasi selesai
             setTimeout(function() {
-                document.body.removeChild(notification);
+                if (notification.parentNode) {
+                    document.body.removeChild(notification);
+                }
             }, 300);
         }, 3000);
     },
@@ -492,6 +574,15 @@ const WeatherIntegration = {
                 display: grid;
                 grid-template-columns: 1fr;
                 gap: 10px;
+            }
+            
+            .weather-error {
+                padding: 15px;
+                background-color: #FFEBEE;
+                color: #D32F2F;
+                border-radius: 5px;
+                margin-bottom: 15px;
+                text-align: center;
             }
             
             /* Responsif */

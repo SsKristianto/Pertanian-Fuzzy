@@ -7,6 +7,7 @@
     <title>Sistem Kontrol Cerdas Tanaman Tomat</title>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/chart_style.css">
+    <link rel="stylesheet" href="css/simulation_style.css">
     <!-- Font Awesome untuk ikon -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Chart.js untuk visualisasi -->
@@ -17,175 +18,408 @@
     <div class="container">
         <header>
             <h1><i class="fas fa-seedling"></i> Sistem Kontrol Cerdas Tanaman Tomat</h1>
-            <p>Sistem Manajemen Berbasis Logika Fuzzy</p>
+            <p>Sistem Manajemen Berbasis Logika Fuzzy dengan Pembelajaran Adaptif</p>
         </header>
 
-        <div class="dashboard">
-            <div class="input-section">
-                <h2>Parameter Input</h2>
-                <form id="parameterForm">
-                    <!-- Input numerik untuk nilai sensor sebenarnya -->
-                    <div class="input-group">
-                        <label for="soil_moisture_value">Kelembaban Tanah (%):</label>
-                        <input type="number" id="soil_moisture_value" min="0" max="100" value="50">
-                        <div class="slider-container">
-                            <input type="range" id="soil_moisture_slider" min="0" max="100" value="50">
+        <!-- Tab Navigasi Utama -->
+        <div class="main-nav">
+            <button class="tab-nav active" data-tab="control-panel">
+                <i class="fas fa-sliders-h"></i> Panel Kontrol
+            </button>
+            <button class="tab-nav" data-tab="simulation-panel">
+                <i class="fas fa-leaf"></i> Simulasi Tanaman
+            </button>
+            <button class="tab-nav" data-tab="dashboard-panel">
+                <i class="fas fa-chart-line"></i> Dashboard
+            </button>
+            <button class="tab-nav" data-tab="config-panel">
+                <i class="fas fa-cogs"></i> Konfigurasi
+            </button>
+        </div>
+
+        <!-- Panel Kontrol (Default) -->
+        <div class="tab-content active" id="control-panel">
+            <div class="dashboard">
+                <div class="input-section">
+                    <h2>Parameter Input</h2>
+                    <form id="parameterForm">
+                        <!-- Input numerik untuk nilai sensor sebenarnya -->
+                        <div class="input-group">
+                            <label for="soil_moisture_value">Kelembaban Tanah (%):</label>
+                            <input type="number" id="soil_moisture_value" min="0" max="100" value="50">
+                            <div class="slider-container">
+                                <input type="range" id="soil_moisture_slider" min="0" max="100" value="50">
+                            </div>
+                            <div class="membership-value">
+                                <span>Keanggotaan: </span>
+                                <span id="soil_moisture_membership">Sedang</span>
+                            </div>
                         </div>
-                        <div class="membership-value">
-                            <span>Keanggotaan: </span>
-                            <span id="soil_moisture_membership">Sedang</span>
+
+                        <div class="input-group">
+                            <label for="air_temperature_value">Suhu Udara (°C):</label>
+                            <input type="number" id="air_temperature_value" min="0" max="50" value="25">
+                            <div class="slider-container">
+                                <input type="range" id="air_temperature_slider" min="0" max="50" value="25">
+                            </div>
+                            <div class="membership-value">
+                                <span>Keanggotaan: </span>
+                                <span id="air_temperature_membership">Sedang</span>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="light_intensity_value">Intensitas Cahaya (lux):</label>
+                            <input type="number" id="light_intensity_value" min="0" max="1000" value="500">
+                            <div class="slider-container">
+                                <input type="range" id="light_intensity_slider" min="0" max="1000" value="500">
+                            </div>
+                            <div class="membership-value">
+                                <span>Keanggotaan: </span>
+                                <span id="light_intensity_membership">Sedang</span>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="humidity_value">Kelembaban Udara (%):</label>
+                            <input type="number" id="humidity_value" min="0" max="100" value="60">
+                            <div class="slider-container">
+                                <input type="range" id="humidity_slider" min="0" max="100" value="60">
+                            </div>
+                            <div class="membership-value">
+                                <span>Keanggotaan: </span>
+                                <span id="humidity_membership">Sedang</span>
+                            </div>
+                        </div>
+
+                        <button type="button" id="calculateButton" class="primary-button">
+                            <i class="fas fa-calculator"></i> Hitung Output
+                        </button>
+                        <button type="button" id="saveButton" class="secondary-button">
+                            <i class="fas fa-save"></i> Simpan Pengaturan
+                        </button>
+                    </form>
+                </div>
+
+                <div class="output-section">
+                    <h2>Output Sistem Kontrol</h2>
+                    <div class="output-cards">
+                        <div class="output-card" id="irrigation-card">
+                            <div class="card-icon">
+                                <i class="fas fa-tint"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Durasi Irigasi</h3>
+                                <p id="irrigation_duration_value">0</p>
+                                <div class="progress-bar">
+                                    <div class="progress" id="irrigation_progress"></div>
+                                </div>
+                                <p id="irrigation_duration">Menunggu perhitungan...</p>
+                            </div>
+                        </div>
+
+                        <div class="output-card" id="temperature-card">
+                            <div class="card-icon">
+                                <i class="fas fa-thermometer-half"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Pengaturan Suhu</h3>
+                                <p id="temperature_setting_value">0</p>
+                                <div class="progress-bar">
+                                    <div class="progress" id="temperature_progress"></div>
+                                </div>
+                                <p id="temperature_setting">Menunggu perhitungan...</p>
+                            </div>
+                        </div>
+
+                        <div class="output-card" id="light-card">
+                            <div class="card-icon">
+                                <i class="fas fa-lightbulb"></i>
+                            </div>
+                            <div class="card-content">
+                                <h3>Kontrol Pencahayaan</h3>
+                                <p id="light_control_value">0</p>
+                                <div class="progress-bar">
+                                    <div class="progress" id="light_progress"></div>
+                                </div>
+                                <p id="light_control">Menunggu perhitungan...</p>
+                            </div>
                         </div>
                     </div>
-
-                    <div class="input-group">
-                        <label for="air_temperature_value">Suhu Udara (°C):</label>
-                        <input type="number" id="air_temperature_value" min="0" max="50" value="25">
-                        <div class="slider-container">
-                            <input type="range" id="air_temperature_slider" min="0" max="50" value="25">
-                        </div>
-                        <div class="membership-value">
-                            <span>Keanggotaan: </span>
-                            <span id="air_temperature_membership">Sedang</span>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="light_intensity_value">Intensitas Cahaya (lux):</label>
-                        <input type="number" id="light_intensity_value" min="0" max="1000" value="500">
-                        <div class="slider-container">
-                            <input type="range" id="light_intensity_slider" min="0" max="1000" value="500">
-                        </div>
-                        <div class="membership-value">
-                            <span>Keanggotaan: </span>
-                            <span id="light_intensity_membership">Sedang</span>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <label for="humidity_value">Kelembaban Udara (%):</label>
-                        <input type="number" id="humidity_value" min="0" max="100" value="60">
-                        <div class="slider-container">
-                            <input type="range" id="humidity_slider" min="0" max="100" value="60">
-                        </div>
-                        <div class="membership-value">
-                            <span>Keanggotaan: </span>
-                            <span id="humidity_membership">Sedang</span>
-                        </div>
-                    </div>
-
-                    <button type="button" id="calculateButton" class="primary-button">
-                        <i class="fas fa-calculator"></i> Hitung Output
-                    </button>
-                    <button type="button" id="saveButton" class="secondary-button">
-                        <i class="fas fa-save"></i> Simpan Pengaturan
-                    </button>
-                </form>
+                </div>
             </div>
 
-            <div class="output-section">
-                <h2>Output Sistem Kontrol</h2>
-                <div class="output-cards">
-                    <div class="output-card" id="irrigation-card">
-                        <div class="card-icon">
-                            <i class="fas fa-tint"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Durasi Irigasi</h3>
-                            <p id="irrigation_duration_value">0</p>
-                            <div class="progress-bar">
-                                <div class="progress" id="irrigation_progress"></div>
-                            </div>
-                            <p id="irrigation_duration">Menunggu perhitungan...</p>
-                        </div>
+            <div class="visualization-section">
+                <h2>Visualisasi Fungsi Keanggotaan</h2>
+                <div class="fuzzy-visualizations">
+                    <div class="fuzzy-chart">
+                        <h3>Kelembaban Tanah</h3>
+                        <canvas id="soilMoistureChart"></canvas>
                     </div>
+                    <div class="fuzzy-chart">
+                        <h3>Suhu Udara</h3>
+                        <canvas id="airTemperatureChart"></canvas>
+                    </div>
+                    <div class="fuzzy-chart">
+                        <h3>Intensitas Cahaya</h3>
+                        <canvas id="lightIntensityChart"></canvas>
+                    </div>
+                    <div class="fuzzy-chart">
+                        <h3>Kelembaban Udara</h3>
+                        <canvas id="humidityChart"></canvas>
+                    </div>
+                </div>
+            </div>
 
-                    <div class="output-card" id="temperature-card">
-                        <div class="card-icon">
-                            <i class="fas fa-thermometer-half"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Pengaturan Suhu</h3>
-                            <p id="temperature_setting_value">0</p>
-                            <div class="progress-bar">
-                                <div class="progress" id="temperature_progress"></div>
-                            </div>
-                            <p id="temperature_setting">Menunggu perhitungan...</p>
-                        </div>
-                    </div>
-
-                    <div class="output-card" id="light-card">
-                        <div class="card-icon">
-                            <i class="fas fa-lightbulb"></i>
-                        </div>
-                        <div class="card-content">
-                            <h3>Kontrol Pencahayaan</h3>
-                            <p id="light_control_value">0</p>
-                            <div class="progress-bar">
-                                <div class="progress" id="light_progress"></div>
-                            </div>
-                            <p id="light_control">Menunggu perhitungan...</p>
-                        </div>
-                    </div>
+            <div class="rules-section">
+                <h2>Aturan Fuzzy</h2>
+                <div class="rules-container">
+                    <table id="rulesTable">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>Kelembaban Tanah</th>
+                                <th>Suhu Udara</th>
+                                <th>Intensitas Cahaya</th>
+                                <th>Kelembaban Udara</th>
+                                <th>Durasi Irigasi</th>
+                                <th>Pengaturan Suhu</th>
+                                <th>Kontrol Pencahayaan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rulesBody">
+                            <!-- Diisi oleh JavaScript -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <div class="visualization-section">
-            <h2>Visualisasi Fungsi Keanggotaan</h2>
-            <div class="fuzzy-visualizations">
-                <div class="fuzzy-chart">
-                    <h3>Kelembaban Tanah</h3>
-                    <canvas id="soilMoistureChart"></canvas>
-                </div>
-                <div class="fuzzy-chart">
-                    <h3>Suhu Udara</h3>
-                    <canvas id="airTemperatureChart"></canvas>
-                </div>
-                <div class="fuzzy-chart">
-                    <h3>Intensitas Cahaya</h3>
-                    <canvas id="lightIntensityChart"></canvas>
-                </div>
-                <div class="fuzzy-chart">
-                    <h3>Kelembaban Udara</h3>
-                    <canvas id="humidityChart"></canvas>
-                </div>
-            </div>
+        <!-- Panel Simulasi -->
+        <div class="tab-content" id="simulation-panel">
+            <!-- Container untuk simulasi akan diisi oleh GreenhouseSimulation.initialize() -->
+            <div id="simulation-container-placeholder"></div>
         </div>
 
-        <div class="rules-section">
-            <h2>Aturan Fuzzy</h2>
-            <div class="rules-container">
-                <table id="rulesTable">
-                    <thead>
-                        <tr>
-                            <th>No</th>
-                            <th>Kelembaban Tanah</th>
-                            <th>Suhu Udara</th>
-                            <th>Intensitas Cahaya</th>
-                            <th>Kelembaban Udara</th>
-                            <th>Durasi Irigasi</th>
-                            <th>Pengaturan Suhu</th>
-                            <th>Kontrol Pencahayaan</th>
-                        </tr>
-                    </thead>
-                    <tbody id="rulesBody">
-                        <!-- Diisi oleh JavaScript -->
-                    </tbody>
-                </table>
-            </div>
+        <!-- Panel Dashboard -->
+        <div class="tab-content" id="dashboard-panel">
+            <!-- Container untuk dashboard akan diisi oleh DashboardExtension.initialize() -->
+            <div id="dashboard-container-placeholder"></div>
         </div>
 
+        <!-- Panel Konfigurasi -->
+        <div class="tab-content" id="config-panel">
+            <!-- Tab Konfigurasi -->
+            <div class="config-section-tabs">
+                <button class="config-section-tab active" data-section="membership-config">
+                    <i class="fas fa-chart-line"></i> Fungsi Keanggotaan
+                </button>
+                <button class="config-section-tab" data-section="rules-config">
+                    <i class="fas fa-list-ol"></i> Aturan Fuzzy
+                </button>
+                <button class="config-section-tab" data-section="adaptive-config">
+                    <i class="fas fa-brain"></i> Pembelajaran Adaptif
+                </button>
+            </div>
+
+            <!-- Container untuk konfigurasi akan diisi oleh FuzzyConfig.initialize() -->
+            <div id="membership-config" class="config-section-content active"></div>
+            <div id="rules-config" class="config-section-content"></div>
+            <div id="adaptive-config" class="config-section-content"></div>
+        </div>
+
+        <!-- Kontainer Cuaca - Akan diisi oleh WeatherIntegration.initialize() -->
+        <div class="weather-container-placeholder"></div>
     </div>
 
     <footer>
         <p>&copy; 2025 Sistem Kontrol Cerdas Tanaman Tomat</p>
     </footer>
 
+    <!-- Stylesheet tambahan untuk navigasi -->
+    <style>
+        /* Navigasi Tab Utama */
+        
+        .main-nav {
+            display: flex;
+            gap: 5px;
+            background-color: #f5f5f5;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .tab-nav {
+            flex: 1;
+            padding: 10px 15px;
+            background-color: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+        
+        .tab-nav:hover {
+            background-color: #e9e9e9;
+        }
+        
+        .tab-nav.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        /* Konten Tab */
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        /* Tab Konfigurasi */
+        
+        .config-section-tabs {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+        
+        .config-section-tab {
+            padding: 8px 12px;
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .config-section-tab.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+        
+        .config-section-content {
+            display: none;
+        }
+        
+        .config-section-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+    </style>
+
     <!-- Scripts -->
     <script src="javascript/fuzzy_logic.js"></script>
     <script src="javascript/ui_interaction.js"></script>
     <script src="javascript/chart.js"></script>
     <script src="javascript/weather_integration.js"></script>
+    <script src="javascript/greenhouse_simulation.js"></script>
+    <script src="javascript/dashboard_extension.js"></script>
+    <script src="javascript/adaptive_learning.js"></script>
+    <script src="javascript/fuzzy_config.js"></script>
+
+    <!-- Script untuk mengatur navigasi tab -->
+    <!-- Modify the initialization script in index.html -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Navigation tab main
+            const tabNavs = document.querySelectorAll('.tab-nav');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabNavs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Deactivate all tabs
+                    tabNavs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+
+                    // Activate clicked tab
+                    this.classList.add('active');
+                    document.getElementById(this.getAttribute('data-tab')).classList.add('active');
+                });
+            });
+
+            // Configure tab navigation
+            const configSectionTabs = document.querySelectorAll('.config-section-tab');
+            const configSectionContents = document.querySelectorAll('.config-section-content');
+
+            configSectionTabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Deactivate all tabs
+                    configSectionTabs.forEach(t => t.classList.remove('active'));
+                    configSectionContents.forEach(c => c.classList.remove('active'));
+
+                    // Activate clicked tab
+                    this.classList.add('active');
+                    document.getElementById(this.getAttribute('data-section')).classList.add('active');
+                });
+            });
+
+            // Initialize simulation components on demand
+            let simulationInitialized = false;
+            let dashboardInitialized = false;
+            let configInitialized = false;
+
+            // Lazy-load initialization for simulation
+            document.querySelector('[data-tab="simulation-panel"]').addEventListener('click', function() {
+                if (!simulationInitialized) {
+                    // Initialize simulation
+                    setTimeout(() => {
+                        document.getElementById('simulation-container-placeholder').innerHTML = '';
+                        GreenhouseSimulation.initialize();
+                        simulationInitialized = true;
+                    }, 100);
+                }
+            });
+
+            // Lazy-load initialization for dashboard
+            document.querySelector('[data-tab="dashboard-panel"]').addEventListener('click', function() {
+                if (!dashboardInitialized) {
+                    // Initialize dashboard
+                    setTimeout(() => {
+                        document.getElementById('dashboard-container-placeholder').innerHTML = '';
+                        DashboardExtension.initialize();
+                        dashboardInitialized = true;
+                    }, 100);
+                }
+            });
+
+            // Lazy-load initialization for configuration
+            document.querySelector('[data-tab="config-panel"]').addEventListener('click', function() {
+                if (!configInitialized) {
+                    // Initialize configuration
+                    setTimeout(() => {
+                        // One at a time with delays to avoid conflicts
+                        setTimeout(() => FuzzyConfig.initialize(), 100);
+                        setTimeout(() => AdaptiveLearning.initialize(), 300);
+                        configInitialized = true;
+                    }, 100);
+                }
+            });
+        });
+    </script>
 </body>
 
 </html>

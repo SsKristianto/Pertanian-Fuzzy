@@ -1,3 +1,6 @@
+Database Lama : 
+---- DATABASE BARU ----
+
 -- --------------------------------------------------------
 -- SCRIPT PEMBUATAN DATABASE UNTUK SISTEM KONTROL CERDAS TOMAT
 -- --------------------------------------------------------
@@ -31,7 +34,7 @@ CREATE TABLE IF NOT EXISTS output_parameters (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu pencatatan output'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Menyimpan hasil output sistem';
 
--- Tabel untuk aturan fuzzy (dengan kolom tambahan)
+-- Tabel untuk aturan fuzzy
 CREATE TABLE IF NOT EXISTS fuzzy_rules (
     id INT AUTO_INCREMENT PRIMARY KEY,
     soil_moisture VARCHAR(10) NOT NULL COMMENT 'Kelembaban tanah (kering, sedang, basah)',
@@ -41,10 +44,6 @@ CREATE TABLE IF NOT EXISTS fuzzy_rules (
     irrigation_duration VARCHAR(10) NOT NULL COMMENT 'Durasi irigasi (tidak ada, singkat, sedang, lama)',
     temperature_setting VARCHAR(15) NOT NULL COMMENT 'Pengaturan suhu (menurunkan, mempertahankan, menaikkan)',
     light_control VARCHAR(10) NOT NULL COMMENT 'Kontrol pencahayaan (mati, redup, sedang, terang)',
-    plant_stage VARCHAR(20) DEFAULT NULL COMMENT 'Fase tanaman yang perlu aturan ini',
-    confidence_level INT DEFAULT 50 COMMENT 'Tingkat kepercayaan aturan (0-100%)',
-    is_adaptive TINYINT(1) DEFAULT 0 COMMENT 'Apakah aturan dibuat oleh sistem adaptif',
-    adaptations_count INT DEFAULT 0 COMMENT 'Jumlah adaptasi yang dilakukan',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu pembuatan aturan',
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Waktu terakhir update aturan',
     active TINYINT(1) DEFAULT 1 COMMENT 'Status aktif aturan (1 = aktif, 0 = tidak aktif)'
@@ -74,70 +73,34 @@ CREATE TABLE IF NOT EXISTS control_actions (
     FOREIGN KEY (output_parameters_id) REFERENCES output_parameters(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Menyimpan log tindakan kontrol yang dilakukan';
 
--- Tabel untuk data simulasi tanaman
-CREATE TABLE IF NOT EXISTS plant_simulation (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100) NOT NULL COMMENT 'Nama tanaman',
-    variety VARCHAR(50) DEFAULT 'Roma' COMMENT 'Varietas tomat',
-    plant_stage ENUM('seedling', 'vegetative', 'flowering', 'fruiting', 'harvesting') DEFAULT 'seedling' COMMENT 'Fase pertumbuhan tanaman',
-    plant_health FLOAT DEFAULT 100 COMMENT 'Kesehatan tanaman (0-100%)',
-    growth_rate FLOAT DEFAULT 1.0 COMMENT 'Tingkat pertumbuhan (faktor pengali)',
-    days_in_current_stage INT DEFAULT 0 COMMENT 'Jumlah hari dalam fase saat ini',
-    soil_moisture FLOAT DEFAULT 50 COMMENT 'Kelembaban tanah (%)',
-    air_temperature FLOAT DEFAULT 25 COMMENT 'Suhu udara (°C)',
-    light_intensity FLOAT DEFAULT 500 COMMENT 'Intensitas cahaya (lux)',
-    humidity FLOAT DEFAULT 60 COMMENT 'Kelembaban udara (%)',
-    plant_height FLOAT DEFAULT 5 COMMENT 'Tinggi tanaman (cm)',
-    fruit_count INT DEFAULT 0 COMMENT 'Jumlah buah',
-    start_date DATE DEFAULT (CURRENT_DATE) COMMENT 'Tanggal mulai simulasi',
-    current_date DATE DEFAULT (CURRENT_DATE) COMMENT 'Tanggal saat ini dalam simulasi',
-    is_active BOOLEAN DEFAULT TRUE COMMENT 'Status simulasi (aktif/tidak)',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu pembuatan simulasi',
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Waktu terakhir update'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Menyimpan data simulasi pertumbuhan tanaman';
+-- --------------------------------------------------------
+-- DATA AWAL UNTUK ATURAN FUZZY
+-- --------------------------------------------------------
 
--- Tabel untuk log simulasi tanaman
-CREATE TABLE IF NOT EXISTS simulation_log (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    simulation_id INT NOT NULL COMMENT 'ID simulasi',
-    soil_moisture FLOAT COMMENT 'Kelembaban tanah (%)',
-    air_temperature FLOAT COMMENT 'Suhu udara (°C)',
-    light_intensity FLOAT COMMENT 'Intensitas cahaya (lux)',
-    humidity FLOAT COMMENT 'Kelembaban udara (%)',
-    irrigation_duration FLOAT COMMENT 'Durasi irigasi (menit)',
-    temperature_setting FLOAT COMMENT 'Pengaturan suhu (°C)',
-    light_control FLOAT COMMENT 'Kontrol cahaya (%)',
-    plant_stage VARCHAR(20) COMMENT 'Fase pertumbuhan',
-    plant_health FLOAT COMMENT 'Kesehatan tanaman (%)',
-    growth_rate FLOAT COMMENT 'Tingkat pertumbuhan',
-    log_date DATE COMMENT 'Tanggal log',
-    FOREIGN KEY (simulation_id) REFERENCES plant_simulation(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Log simulasi pertumbuhan tanaman';
-
--- Tabel untuk log aktivitas pembelajaran
-CREATE TABLE IF NOT EXISTS learning_log (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    activity VARCHAR(255) NOT NULL COMMENT 'Deskripsi aktivitas pembelajaran',
-    rule_id INT COMMENT 'ID aturan yang dimodifikasi',
-    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu aktivitas',
-    FOREIGN KEY (rule_id) REFERENCES fuzzy_rules(id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Log aktivitas pembelajaran adaptif';
-
--- Tabel untuk data cuaca
-CREATE TABLE IF NOT EXISTS weather_data (
-    id INT AUTO_INCREMENT PRIMARY KEY,
-    location_name VARCHAR(100) DEFAULT 'Default' COMMENT 'Nama lokasi',
-    temperature FLOAT COMMENT 'Suhu (°C)',
-    humidity FLOAT COMMENT 'Kelembaban udara (%)',
-    precipitation FLOAT DEFAULT 0 COMMENT 'Curah hujan (mm)',
-    wind_speed FLOAT DEFAULT 0 COMMENT 'Kecepatan angin (km/h)',
-    cloud_cover INT DEFAULT 0 COMMENT 'Tutupan awan (%)',
-    light_intensity FLOAT COMMENT 'Intensitas cahaya (lux)',
-    weather_condition VARCHAR(50) COMMENT 'Kondisi cuaca (cerah, hujan, dll)',
-    is_forecasted BOOLEAN DEFAULT FALSE COMMENT 'Apakah data ini ramalan',
-    record_date DATE COMMENT 'Tanggal pencatatan',
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu pencatatan'
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Data cuaca untuk simulasi';
+-- Masukkan 20 aturan fuzzy awal
+INSERT INTO fuzzy_rules 
+    (soil_moisture, air_temperature, light_intensity, humidity, irrigation_duration, temperature_setting, light_control) 
+VALUES 
+    ('kering', 'panas', 'tinggi', 'rendah', 'lama', 'menurunkan', 'redup'),
+    ('kering', 'panas', 'tinggi', 'sedang', 'lama', 'menurunkan', 'sedang'),
+    ('kering', 'panas', 'sedang', 'rendah', 'lama', 'menurunkan', 'sedang'),
+    ('kering', 'sedang', 'rendah', 'rendah', 'lama', 'mempertahankan', 'terang'),
+    ('kering', 'dingin', 'rendah', 'rendah', 'sedang', 'menaikkan', 'terang'),
+    ('sedang', 'panas', 'tinggi', 'rendah', 'sedang', 'menurunkan', 'redup'),
+    ('sedang', 'sedang', 'sedang', 'sedang', 'sedang', 'mempertahankan', 'sedang'),
+    ('sedang', 'dingin', 'rendah', 'tinggi', 'singkat', 'menaikkan', 'terang'),
+    ('basah', 'panas', 'tinggi', 'sedang', 'tidak_ada', 'menurunkan', 'redup'),
+    ('basah', 'sedang', 'sedang', 'tinggi', 'tidak_ada', 'mempertahankan', 'sedang'),
+    ('kering', 'sedang', 'sedang', 'sedang', 'lama', 'mempertahankan', 'sedang'),
+    ('sedang', 'panas', 'sedang', 'rendah', 'sedang', 'menurunkan', 'sedang'),
+    ('basah', 'dingin', 'tinggi', 'rendah', 'tidak_ada', 'menaikkan', 'redup'),
+    ('kering', 'dingin', 'sedang', 'tinggi', 'sedang', 'menaikkan', 'sedang'),
+    ('sedang', 'sedang', 'tinggi', 'sedang', 'sedang', 'mempertahankan', 'redup'),
+    ('basah', 'panas', 'rendah', 'rendah', 'tidak_ada', 'menurunkan', 'terang'),
+    ('kering', 'sedang', 'tinggi', 'rendah', 'lama', 'mempertahankan', 'redup'),
+    ('sedang', 'dingin', 'sedang', 'sedang', 'singkat', 'menaikkan', 'sedang'),
+    ('basah', 'dingin', 'sedang', 'tinggi', 'tidak_ada', 'menaikkan', 'sedang'),
+    ('kering', 'panas', 'rendah', 'tinggi', 'lama', 'menurunkan', 'sedang');
 
 -- --------------------------------------------------------
 -- INDEKS UNTUK PERFORMA QUERY
@@ -157,32 +120,12 @@ ALTER TABLE output_parameters ADD INDEX idx_light_control (light_control);
 -- Indeks pada tabel fuzzy_rules untuk pencarian aturan
 ALTER TABLE fuzzy_rules ADD INDEX idx_rule_inputs (soil_moisture, air_temperature, light_intensity, humidity);
 ALTER TABLE fuzzy_rules ADD INDEX idx_rule_outputs (irrigation_duration, temperature_setting, light_control);
-ALTER TABLE fuzzy_rules ADD INDEX idx_plant_stage (plant_stage);
-ALTER TABLE fuzzy_rules ADD INDEX idx_confidence (confidence_level);
-ALTER TABLE fuzzy_rules ADD INDEX idx_is_adaptive (is_adaptive);
 
 -- Indeks pada tabel sensor_data untuk pencarian berdasarkan waktu
 ALTER TABLE sensor_data ADD INDEX idx_reading_time (reading_time);
 
 -- Indeks pada tabel control_actions untuk pencarian berdasarkan waktu
 ALTER TABLE control_actions ADD INDEX idx_action_time (action_time);
-
--- Indeks untuk plant_simulation
-ALTER TABLE plant_simulation ADD INDEX idx_plant_stage (plant_stage);
-ALTER TABLE plant_simulation ADD INDEX idx_is_active (is_active);
-ALTER TABLE plant_simulation ADD INDEX idx_curr_date (current_date);
-
--- Indeks untuk simulation_log
-ALTER TABLE simulation_log ADD INDEX idx_simulation_id (simulation_id);
-ALTER TABLE simulation_log ADD INDEX idx_log_date (log_date);
-
--- Indeks untuk learning_log
-ALTER TABLE learning_log ADD INDEX idx_rule_id_log (rule_id);
-ALTER TABLE learning_log ADD INDEX idx_timestamp_log (timestamp);
-
--- Indeks untuk weather_data
-ALTER TABLE weather_data ADD INDEX idx_loc_date (location_name, record_date);
-ALTER TABLE weather_data ADD INDEX idx_forecast (is_forecasted);
 
 -- --------------------------------------------------------
 -- TRIGGER UNTUK MEMPERTAHANKAN INTEGRITAS DATA
@@ -331,9 +274,6 @@ SELECT
     irrigation_duration,
     temperature_setting,
     light_control,
-    plant_stage,
-    confidence_level,
-    is_adaptive,
     created_at,
     updated_at
 FROM 
@@ -343,67 +283,12 @@ WHERE
 ORDER BY 
     id ASC;
 
--- Tampilan untuk melihat ringkasan simulasi tanaman
-CREATE VIEW plant_simulation_summary AS
-SELECT 
-    ps.id, 
-    ps.name, 
-    ps.variety, 
-    ps.plant_stage, 
-    ps.plant_health, 
-    ps.growth_rate,
-    ps.plant_height,
-    ps.fruit_count,
-    ps.soil_moisture,
-    ps.air_temperature,
-    ps.light_intensity,
-    ps.humidity,
-    DATEDIFF(ps.current_date, ps.start_date) AS days_since_start,
-    ps.is_active,
-    ps.current_date
-FROM 
-    plant_simulation ps
-ORDER BY 
-    ps.is_active DESC, ps.id DESC;
-
--- Tampilan untuk melihat aturan adaptif dengan tingkat kepercayaan
-CREATE VIEW adaptive_rules_confidence AS
-SELECT 
-    fr.id,
-    fr.soil_moisture,
-    fr.air_temperature,
-    fr.light_intensity,
-    fr.humidity,
-    fr.irrigation_duration,
-    fr.temperature_setting,
-    fr.light_control,
-    fr.plant_stage,
-    fr.confidence_level,
-    fr.adaptations_count,
-    fr.updated_at
-FROM 
-    fuzzy_rules fr
-WHERE 
-    fr.is_adaptive = 1 AND fr.active = 1
-ORDER BY 
-    fr.confidence_level DESC, fr.id ASC;
-
--- Tampilan untuk statistik pembelajaran adaptif
-CREATE VIEW adaptive_learning_stats AS
-SELECT 
-    (SELECT COUNT(*) FROM fuzzy_rules WHERE is_adaptive = 1) AS adaptive_rules_count,
-    (SELECT AVG(confidence_level) FROM fuzzy_rules WHERE is_adaptive = 1) AS avg_confidence,
-    (SELECT COUNT(*) FROM learning_log) AS learning_activities,
-    (SELECT COUNT(DISTINCT rule_id) FROM learning_log) AS adjusted_rules_count,
-    (SELECT MAX(timestamp) FROM learning_log) AS last_learning_activity;
-
 -- --------------------------------------------------------
 -- PROSEDUR TERSIMPAN (STORED PROCEDURES)
 -- --------------------------------------------------------
 
 -- Prosedur untuk mencari aturan fuzzy berdasarkan kondisi input
 DELIMITER //
-DROP PROCEDURE IF EXISTS find_matching_rules //
 CREATE PROCEDURE find_matching_rules(
     IN p_soil_moisture VARCHAR(10),
     IN p_air_temperature VARCHAR(10),
@@ -422,7 +307,6 @@ DELIMITER ;
 
 -- Prosedur untuk merekam tindakan kontrol lengkap
 DELIMITER //
-DROP PROCEDURE IF EXISTS record_control_action //
 CREATE PROCEDURE record_control_action(
     IN p_soil_moisture VARCHAR(10),
     IN p_air_temperature VARCHAR(10),
@@ -474,7 +358,6 @@ DELIMITER ;
 
 -- Prosedur untuk mendapatkan statistik ringkasan sistem
 DELIMITER //
-DROP PROCEDURE IF EXISTS get_system_statistics //
 CREATE PROCEDURE get_system_statistics()
 BEGIN
     -- Jumlah total aturan fuzzy
@@ -518,9 +401,196 @@ BEGIN
 END //
 DELIMITER ;
 
+-- --------------------------------------------------------
+-- PESAN KONFIRMASI AKHIR
+-- --------------------------------------------------------
+
+SELECT 'Database fuzzy_tomato_system berhasil dibuat dengan semua tabel, indeks, trigger, view, dan prosedur tersimpan!' AS 'Pesan Sukses';
+
+
+-- --------------------------------------------------------
+-- PEMBARUAN DATABASE UNTUK FITUR TAMBAHAN
+-- --------------------------------------------------------
+
+-- Gunakan database yang ada
+USE fuzzy_tomato_system;
+
+-- --------------------------------------------------------
+-- STRUKTUR TABEL UNTUK SIMULASI TANAMAN
+-- --------------------------------------------------------
+
+-- Tabel untuk data simulasi tanaman
+CREATE TABLE IF NOT EXISTS plant_simulation (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL COMMENT 'Nama tanaman',
+    variety VARCHAR(50) DEFAULT 'Roma' COMMENT 'Varietas tomat',
+    plant_stage ENUM('seedling', 'vegetative', 'flowering', 'fruiting', 'harvesting') DEFAULT 'seedling' COMMENT 'Fase pertumbuhan tanaman',
+    plant_health FLOAT DEFAULT 100 COMMENT 'Kesehatan tanaman (0-100%)',
+    growth_rate FLOAT DEFAULT 1.0 COMMENT 'Tingkat pertumbuhan (faktor pengali)',
+    days_in_current_stage INT DEFAULT 0 COMMENT 'Jumlah hari dalam fase saat ini',
+    soil_moisture FLOAT DEFAULT 50 COMMENT 'Kelembaban tanah (%)',
+    air_temperature FLOAT DEFAULT 25 COMMENT 'Suhu udara (°C)',
+    light_intensity FLOAT DEFAULT 500 COMMENT 'Intensitas cahaya (lux)',
+    humidity FLOAT DEFAULT 60 COMMENT 'Kelembaban udara (%)',
+    plant_height FLOAT DEFAULT 5 COMMENT 'Tinggi tanaman (cm)',
+    fruit_count INT DEFAULT 0 COMMENT 'Jumlah buah',
+    start_date DATE DEFAULT CURRENT_DATE COMMENT 'Tanggal mulai simulasi',
+    current_date DATE DEFAULT CURRENT_DATE COMMENT 'Tanggal saat ini dalam simulasi',
+    is_active BOOLEAN DEFAULT TRUE COMMENT 'Status simulasi (aktif/tidak)',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu pembuatan simulasi',
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'Waktu terakhir update'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Menyimpan data simulasi pertumbuhan tanaman';
+
+-- Tabel untuk log simulasi tanaman
+CREATE TABLE IF NOT EXISTS simulation_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    simulation_id INT NOT NULL COMMENT 'ID simulasi',
+    soil_moisture FLOAT COMMENT 'Kelembaban tanah (%)',
+    air_temperature FLOAT COMMENT 'Suhu udara (°C)',
+    light_intensity FLOAT COMMENT 'Intensitas cahaya (lux)',
+    humidity FLOAT COMMENT 'Kelembaban udara (%)',
+    irrigation_duration FLOAT COMMENT 'Durasi irigasi (menit)',
+    temperature_setting FLOAT COMMENT 'Pengaturan suhu (°C)',
+    light_control FLOAT COMMENT 'Kontrol cahaya (%)',
+    plant_stage VARCHAR(20) COMMENT 'Fase pertumbuhan',
+    plant_health FLOAT COMMENT 'Kesehatan tanaman (%)',
+    growth_rate FLOAT COMMENT 'Tingkat pertumbuhan',
+    log_date DATE COMMENT 'Tanggal log',
+    FOREIGN KEY (simulation_id) REFERENCES plant_simulation(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Log simulasi pertumbuhan tanaman';
+
+-- --------------------------------------------------------
+-- PEMBARUAN TABEL ATURAN FUZZY UNTUK PEMBELAJARAN ADAPTIF
+-- --------------------------------------------------------
+
+-- Menambahkan kolom baru ke tabel fuzzy_rules
+ALTER TABLE fuzzy_rules 
+    ADD COLUMN IF NOT EXISTS plant_stage VARCHAR(20) DEFAULT NULL COMMENT 'Fase tanaman yang perlu aturan ini',
+    ADD COLUMN IF NOT EXISTS confidence_level INT DEFAULT 50 COMMENT 'Tingkat kepercayaan aturan (0-100%)',
+    ADD COLUMN IF NOT EXISTS is_adaptive BOOLEAN DEFAULT FALSE COMMENT 'Apakah aturan dibuat oleh sistem adaptif',
+    ADD COLUMN IF NOT EXISTS adaptations_count INT DEFAULT 0 COMMENT 'Jumlah adaptasi yang dilakukan';
+
+-- Tabel untuk log aktivitas pembelajaran
+CREATE TABLE IF NOT EXISTS learning_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    activity VARCHAR(255) NOT NULL COMMENT 'Deskripsi aktivitas pembelajaran',
+    rule_id INT COMMENT 'ID aturan yang dimodifikasi',
+    timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu aktivitas',
+    FOREIGN KEY (rule_id) REFERENCES fuzzy_rules(id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Log aktivitas pembelajaran adaptif';
+
+-- --------------------------------------------------------
+-- PEMBARUAN TABEL DATA CUACA
+-- --------------------------------------------------------
+
+-- Tabel untuk data cuaca
+CREATE TABLE IF NOT EXISTS weather_data (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    location_name VARCHAR(100) DEFAULT 'Default' COMMENT 'Nama lokasi',
+    temperature FLOAT COMMENT 'Suhu (°C)',
+    humidity FLOAT COMMENT 'Kelembaban udara (%)',
+    precipitation FLOAT DEFAULT 0 COMMENT 'Curah hujan (mm)',
+    wind_speed FLOAT DEFAULT 0 COMMENT 'Kecepatan angin (km/h)',
+    cloud_cover INT DEFAULT 0 COMMENT 'Tutupan awan (%)',
+    light_intensity FLOAT COMMENT 'Intensitas cahaya (lux)',
+    weather_condition VARCHAR(50) COMMENT 'Kondisi cuaca (cerah, hujan, dll)',
+    is_forecasted BOOLEAN DEFAULT FALSE COMMENT 'Apakah data ini ramalan',
+    record_date DATE COMMENT 'Tanggal pencatatan',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT 'Waktu pencatatan'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Data cuaca untuk simulasi';
+
+-- --------------------------------------------------------
+-- INDEKS TAMBAHAN UNTUK PERFORMA QUERY
+-- --------------------------------------------------------
+
+-- Indeks untuk plant_simulation
+ALTER TABLE plant_simulation ADD INDEX idx_plant_stage (plant_stage);
+ALTER TABLE plant_simulation ADD INDEX idx_is_active (is_active);
+ALTER TABLE plant_simulation ADD INDEX idx_current_date (current_date);
+
+-- Indeks untuk simulation_log
+ALTER TABLE simulation_log ADD INDEX idx_simulation_id (simulation_id);
+ALTER TABLE simulation_log ADD INDEX idx_log_date (log_date);
+
+-- Indeks untuk fuzzy_rules tambahan
+ALTER TABLE fuzzy_rules ADD INDEX idx_plant_stage (plant_stage);
+ALTER TABLE fuzzy_rules ADD INDEX idx_confidence (confidence_level);
+ALTER TABLE fuzzy_rules ADD INDEX idx_is_adaptive (is_adaptive);
+
+-- Indeks untuk learning_log
+ALTER TABLE learning_log ADD INDEX idx_rule_id (rule_id);
+ALTER TABLE learning_log ADD INDEX idx_timestamp (timestamp);
+
+-- Indeks untuk weather_data
+ALTER TABLE weather_data ADD INDEX idx_location_date (location_name, record_date);
+ALTER TABLE weather_data ADD INDEX idx_is_forecasted (is_forecasted);
+
+-- --------------------------------------------------------
+-- TAMPILAN (VIEW) TAMBAHAN UNTUK ANALISIS
+-- --------------------------------------------------------
+
+-- Tampilan untuk melihat ringkasan simulasi tanaman
+CREATE OR REPLACE VIEW plant_simulation_summary AS
+SELECT 
+    ps.id, 
+    ps.name, 
+    ps.variety, 
+    ps.plant_stage, 
+    ps.plant_health, 
+    ps.growth_rate,
+    ps.plant_height,
+    ps.fruit_count,
+    ps.soil_moisture,
+    ps.air_temperature,
+    ps.light_intensity,
+    ps.humidity,
+    DATEDIFF(ps.current_date, ps.start_date) AS days_since_start,
+    ps.is_active,
+    ps.current_date
+FROM 
+    plant_simulation ps
+ORDER BY 
+    ps.is_active DESC, ps.id DESC;
+
+-- Tampilan untuk melihat aturan adaptif dengan tingkat kepercayaan
+CREATE OR REPLACE VIEW adaptive_rules_confidence AS
+SELECT 
+    fr.id,
+    fr.soil_moisture,
+    fr.air_temperature,
+    fr.light_intensity,
+    fr.humidity,
+    fr.irrigation_duration,
+    fr.temperature_setting,
+    fr.light_control,
+    fr.plant_stage,
+    fr.confidence_level,
+    fr.adaptations_count,
+    fr.updated_at
+FROM 
+    fuzzy_rules fr
+WHERE 
+    fr.is_adaptive = 1 AND fr.active = 1
+ORDER BY 
+    fr.confidence_level DESC, fr.id ASC;
+
+-- Tampilan untuk statistik pembelajaran adaptif
+CREATE OR REPLACE VIEW adaptive_learning_stats AS
+SELECT 
+    (SELECT COUNT(*) FROM fuzzy_rules WHERE is_adaptive = 1) AS adaptive_rules_count,
+    (SELECT AVG(confidence_level) FROM fuzzy_rules WHERE is_adaptive = 1) AS avg_confidence,
+    (SELECT COUNT(*) FROM learning_log) AS learning_activities,
+    (SELECT COUNT(DISTINCT rule_id) FROM learning_log) AS adjusted_rules_count,
+    (SELECT MAX(timestamp) FROM learning_log) AS last_learning_activity
+FROM 
+    dual;
+
+-- --------------------------------------------------------
+-- PROSEDUR TERSIMPAN (STORED PROCEDURES) TAMBAHAN
+-- --------------------------------------------------------
+
 -- Prosedur untuk memperbarui tingkat kepercayaan aturan
 DELIMITER //
-DROP PROCEDURE IF EXISTS update_rule_confidence //
 CREATE PROCEDURE update_rule_confidence(
     IN p_rule_id INT,
     IN p_confidence_change FLOAT
@@ -551,7 +621,6 @@ DELIMITER ;
 
 -- Prosedur untuk menemukan aturan optimal untuk kondisi tertentu
 DELIMITER //
-DROP PROCEDURE IF EXISTS find_optimal_rules //
 CREATE PROCEDURE find_optimal_rules(
     IN p_plant_stage VARCHAR(20)
 )
@@ -567,7 +636,6 @@ DELIMITER ;
 
 -- Prosedur untuk memperbarui data cuaca 
 DELIMITER //
-DROP PROCEDURE IF EXISTS update_weather_data //
 CREATE PROCEDURE update_weather_data(
     IN p_location VARCHAR(100),
     IN p_temperature FLOAT,
@@ -598,33 +666,8 @@ END //
 DELIMITER ;
 
 -- --------------------------------------------------------
--- DATA AWAL
+-- PEMBARUAN DATA AWAL
 -- --------------------------------------------------------
-
--- Masukkan 20 aturan fuzzy awal
-INSERT INTO fuzzy_rules 
-    (soil_moisture, air_temperature, light_intensity, humidity, irrigation_duration, temperature_setting, light_control) 
-VALUES 
-    ('kering', 'panas', 'tinggi', 'rendah', 'lama', 'menurunkan', 'redup'),
-    ('kering', 'panas', 'tinggi', 'sedang', 'lama', 'menurunkan', 'sedang'),
-    ('kering', 'panas', 'sedang', 'rendah', 'lama', 'menurunkan', 'sedang'),
-    ('kering', 'sedang', 'rendah', 'rendah', 'lama', 'mempertahankan', 'terang'),
-    ('kering', 'dingin', 'rendah', 'rendah', 'sedang', 'menaikkan', 'terang'),
-    ('sedang', 'panas', 'tinggi', 'rendah', 'sedang', 'menurunkan', 'redup'),
-    ('sedang', 'sedang', 'sedang', 'sedang', 'sedang', 'mempertahankan', 'sedang'),
-    ('sedang', 'dingin', 'rendah', 'tinggi', 'singkat', 'menaikkan', 'terang'),
-    ('basah', 'panas', 'tinggi', 'sedang', 'tidak_ada', 'menurunkan', 'redup'),
-    ('basah', 'sedang', 'sedang', 'tinggi', 'tidak_ada', 'mempertahankan', 'sedang'),
-    ('kering', 'sedang', 'sedang', 'sedang', 'lama', 'mempertahankan', 'sedang'),
-    ('sedang', 'panas', 'sedang', 'rendah', 'sedang', 'menurunkan', 'sedang'),
-    ('basah', 'dingin', 'tinggi', 'rendah', 'tidak_ada', 'menaikkan', 'redup'),
-    ('kering', 'dingin', 'sedang', 'tinggi', 'sedang', 'menaikkan', 'sedang'),
-    ('sedang', 'sedang', 'tinggi', 'sedang', 'sedang', 'mempertahankan', 'redup'),
-    ('basah', 'panas', 'rendah', 'rendah', 'tidak_ada', 'menurunkan', 'terang'),
-    ('kering', 'sedang', 'tinggi', 'rendah', 'lama', 'mempertahankan', 'redup'),
-    ('sedang', 'dingin', 'sedang', 'sedang', 'singkat', 'menaikkan', 'sedang'),
-    ('basah', 'dingin', 'sedang', 'tinggi', 'tidak_ada', 'menaikkan', 'sedang'),
-    ('kering', 'panas', 'rendah', 'tinggi', 'lama', 'menurunkan', 'sedang');
 
 -- Tambahkan aturan fuzzy untuk fase pertumbuhan bibit
 INSERT INTO fuzzy_rules 
@@ -679,3 +722,9 @@ VALUES
     ('Default', 26.2, 62.0, 0.0, 4.8, 20, 600, 'Cerah Berawan', 1, DATE_ADD(CURRENT_DATE, INTERVAL 2 DAY)),
     ('Default', 27.5, 58.0, 0.0, 6.0, 5, 650, 'Cerah', 1, DATE_ADD(CURRENT_DATE, INTERVAL 3 DAY)),
     ('Default', 23.0, 75.0, 10.0, 8.5, 90, 200, 'Hujan', 1, DATE_ADD(CURRENT_DATE, INTERVAL 4 DAY));
+
+-- --------------------------------------------------------
+-- PESAN KONFIRMASI AKHIR
+-- --------------------------------------------------------
+
+SELECT 'Pembaruan database untuk fitur tambahan berhasil!' AS 'Pesan Sukses';
