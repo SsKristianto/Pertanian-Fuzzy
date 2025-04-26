@@ -203,8 +203,138 @@
 
         <!-- Panel Dashboard -->
         <div class="tab-content" id="dashboard-panel">
-            <!-- Container untuk dashboard akan diisi oleh DashboardExtension.initialize() -->
-            <div id="dashboard-container-placeholder"></div>
+            <!-- Dashboard akan diisi di sini -->
+            <div class="dashboard-extension-container">
+                <h2><i class="fas fa-chart-line"></i> Dashboard Performa Tanaman</h2>
+                
+                <div class="dashboard-controls">
+                    <div class="tab-controls">
+                        <button class="tab-button active" data-tab="performance">
+                            <i class="fas fa-tachometer-alt"></i> Performa
+                        </button>
+                        <button class="tab-button" data-tab="conditions">
+                            <i class="fas fa-thermometer-half"></i> Kondisi Lingkungan
+                        </button>
+                        <button class="tab-button" data-tab="history">
+                            <i class="fas fa-history"></i> Riwayat
+                        </button>
+                        <button class="tab-button" data-tab="forecast">
+                            <i class="fas fa-cloud-sun"></i> Prakiraan
+                        </button>
+                    </div>
+                    
+                    <div class="time-range-selector">
+                        <label>Rentang Waktu:</label>
+                        <select id="time-range-select">
+                            <option value="7" selected>7 Hari</option>
+                            <option value="30">30 Hari</option>
+                            <option value="90">90 Hari</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="dashboard-content">
+                    <!-- Tab Performa -->
+                    <div class="dashboard-tab active" id="performance-tab">
+                        <div class="metrics-grid">
+                            <div class="metric-card health">
+                                <div class="metric-icon">
+                                    <i class="fas fa-heartbeat"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3>Kesehatan Tanaman</h3>
+                                    <div class="metric-value" id="health-metric">0%</div>
+                                    <div class="metric-trend">
+                                        <span class="trend-value" id="health-trend">0%</span>
+                                        <span class="trend-icon"><i class="fas fa-equals"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card growth">
+                                <div class="metric-icon">
+                                    <i class="fas fa-seedling"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3>Tingkat Pertumbuhan</h3>
+                                    <div class="metric-value" id="growth-metric">0%</div>
+                                    <div class="metric-trend">
+                                        <span class="trend-value" id="growth-trend">0%</span>
+                                        <span class="trend-icon"><i class="fas fa-equals"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card fruits">
+                                <div class="metric-icon">
+                                    <i class="fas fa-apple-alt"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3>Jumlah Buah</h3>
+                                    <div class="metric-value" id="fruits-metric">0</div>
+                                    <div class="metric-trend">
+                                        <span class="trend-value" id="fruits-trend">0</span>
+                                        <span class="trend-icon"><i class="fas fa-equals"></i></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="metric-card stage">
+                                <div class="metric-icon">
+                                    <i class="fas fa-leaf"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <h3>Fase Pertumbuhan</h3>
+                                    <div class="metric-value" id="stage-metric">-</div>
+                                    <div class="metric-info" id="stage-info">0 hari dalam fase ini</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="charts-container">
+                            <div class="chart-wrapper">
+                                <h3>Kesehatan dan Pertumbuhan</h3>
+                                <canvas id="performance-chart"></canvas>
+                            </div>
+                            
+                            <div class="chart-wrapper">
+                                <h3>Performa Keseluruhan</h3>
+                                <canvas id="overall-performance-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Kondisi Lingkungan -->
+                    <div class="dashboard-tab" id="conditions-tab">
+                        <div class="environment-grid">
+                            <div class="environment-card soil">
+                                <div class="env-icon">
+                                    <i class="fas fa-water"></i>
+                                </div>
+                                <div class="env-content">
+                                    <h3>Kelembaban Tanah</h3>
+                                    <div class="env-value" id="soil-value">0%</div>
+                                    <div class="env-optimal">
+                                        <span>Optimal: </span>
+                                        <span id="soil-optimal">50%</span>
+                                    </div>
+                                    <div class="env-range-slider">
+                                        <div class="range-track">
+                                            <div class="range-fill" id="soil-fill" style="width: 0%"></div>
+                                            <div class="optimal-marker" id="soil-marker" style="left: 50%"></div>
+                                            <div class="current-marker" id="soil-current" style="left: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Other environment cards... -->
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Riwayat & Forecasts also go here -->
+                </div>
+            </div>
         </div>
 
         <!-- Panel Konfigurasi -->
@@ -239,6 +369,40 @@
     <!-- Stylesheet tambahan untuk navigasi -->
     <style>
         /* Navigasi Tab Utama */
+        .tab-content.active {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* Tambahan untuk container dashboard */
+        .dashboard-extension-container {
+            display: block !important;
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 30px;
+            background-color: var(--card-bg, #fff);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Tambahan untuk memastikan metrik terlihat */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        /* Debug outline untuk memudahkan identifikasi elemen */
+        #dashboard-panel.active {
+            border: 2px solid green;
+        }
+
+        .dashboard-extension-container {
+            border: 2px solid blue;
+        }
         
         .main-nav {
             display: flex;
@@ -345,6 +509,18 @@
     <!-- Modify the initialization script in index.html -->
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // Debug check for DashboardExtension
+            if (typeof DashboardExtension === 'undefined') {
+                console.error('DashboardExtension is not defined! Check that dashboard_extension.js is loaded correctly.');
+            } else {
+                console.log('DashboardExtension is available.');
+            }
+            
+            // Rest of your existing initialization code
+            // ...
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
             // Navigation tab main
             const tabNavs = document.querySelectorAll('.tab-nav');
             const tabContents = document.querySelectorAll('.tab-content');
@@ -396,15 +572,26 @@
 
             // Lazy-load initialization for dashboard
             document.querySelector('[data-tab="dashboard-panel"]').addEventListener('click', function() {
-                if (!dashboardInitialized) {
-                    // Initialize dashboard
-                    setTimeout(() => {
-                        document.getElementById('dashboard-container-placeholder').innerHTML = '';
+            if (!dashboardInitialized) {
+                // Make sure the placeholder is clear
+                const placeholder = document.getElementById('dashboard-container-placeholder');
+                if (placeholder) {
+                    placeholder.innerHTML = '';
+                }
+                
+                // Initialize dashboard with a small delay to ensure DOM is ready
+                setTimeout(() => {
+                    try {
+                        console.log('Initializing dashboard...');
                         DashboardExtension.initialize();
                         dashboardInitialized = true;
-                    }, 100);
-                }
-            });
+                        console.log('Dashboard initialized successfully');
+                    } catch (error) {
+                        console.error('Error initializing dashboard:', error);
+                    }
+                }, 300);
+            }
+        });
 
             // Lazy-load initialization for configuration
             document.querySelector('[data-tab="config-panel"]').addEventListener('click', function() {
@@ -420,6 +607,8 @@
             });
         });
     </script>
+    
+
 </body>
 
 </html>
