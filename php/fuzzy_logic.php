@@ -1,44 +1,757 @@
 <?php
+/**
+ * fuzzy_logic.php
+ * 
+ * File ini bertanggung jawab untuk melakukan perhitungan logika fuzzy
+ * termasuk fuzzifikasi, inferensi fuzzy, dan defuzzifikasi
+ */
+
+// Koneksi ke database
 include('connect.php');
 
-// Fungsi fuzzy sederhana untuk mendefinisikan aturan dan inferensi
-function calculate_fuzzy_output($soil_moisture, $air_temperature, $light_intensity, $humidity) {
-    // Menentukan hasil output berdasarkan input (contoh sederhana)
-    if ($soil_moisture == "kering" && $air_temperature == "panas") {
-        return ['irrigation_duration' => 'lama', 'temperature_setting' => 'menurunkan', 'light_control' => 'terang'];
-    } elseif ($soil_moisture == "sedang" && $air_temperature == "sedang") {
-        return ['irrigation_duration' => 'sedang', 'temperature_setting' => 'mempertahankan', 'light_control' => 'sedang'];
+// Pastikan request adalah POST
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    echo json_encode(['error' => 'Metode tidak diizinkan']);
+    exit;
+}
+
+// Ambil data input dari POST request
+$soil_moisture = isset($_POST['soil_moisture']) ? (float) $_POST['soil_moisture'] : 0;
+$air_temperature = isset($_POST['air_temperature']) ? (float) $_POST['air_temperature'] : 0;
+$light_intensity = isset($_POST['light_intensity']) ? (float) $_POST['light_intensity'] : 0;
+$humidity = isset($_POST['humidity']) ? (float) $_POST['humidity'] : 0;
+
+// Validasi input
+if ($soil_moisture < 0 || $soil_moisture > 100 ||
+    $air_temperature < 0 || $air_temperature > 50 ||
+    $light_intensity < 0 || $light_intensity > 1000 ||
+    $humidity < 0 || $humidity > 100) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Nilai input tidak valid']);
+    exit;
+}
+
+// Hasil perhitungan fuzzy
+$fuzzyOutput = calculateFuzzyControl($soil_moisture, $air_temperature, $light_intensity, $humidity);
+
+// Kembalikan hasil dalam format JSON
+header('Content-Type: application/json');
+echo json_encode($fuzzyOutput);
+exit;
+
+/**
+ * ------------ FUNGSI KEANGGOTAAN KELEMBABAN TANAH ------------
+ * Kering: 0-40%
+ * Sedang: 30-70%
+ * Basah: 60-100%
+ */
+function soilMoistureMembership($value) {
+    $result = [
+        'kering' => 0,
+        'sedang' => 0,
+        'basah' => 0
+    ];
+    
+    // Fungsi keanggotaan Kering (0-40%)
+    if ($value <= 30) {
+        $result['kering'] = 1;
+    } elseif ($value > 30 && $value < 40) {
+        $result['kering'] = (40 - $value) / 10;
+    }
+    
+    // Fungsi keanggotaan Sedang (30-70%)
+    if ($value >= 30 && $value <= 50) {
+        $result['sedang'] = ($value - 30) / 20;
+    } elseif ($value > 50 && $value <= 70) {
+        $result['sedang'] = (70 - $value) / 20;
+    }
+    
+    // Fungsi keanggotaan Basah (60-100%)
+    if ($value >= 60 && $value < 70) {
+        $result['basah'] = ($value - 60) / 10;
+    } elseif ($value >= 70) {
+        $result['basah'] = 1;
+    }
+    
+    return $result;
+}
+
+/**
+ * ------------ FUNGSI KEANGGOTAAN SUHU UDARA ------------
+ * Dingin: 0-20°C
+ * Sedang: 15-30°C
+ * Panas: 25-50°C
+ */
+function airTemperatureMembership($value) {
+    $result = [
+        'dingin' => 0,
+        'sedang' => 0,
+        'panas' => 0
+    ];
+    
+    // Fungsi keanggotaan Dingin (0-20°C)
+    if ($value <= 15) {
+        $result['dingin'] = 1;
+    } elseif ($value > 15 && $value < 20) {
+        $result['dingin'] = (20 - $value) / 5;
+    }
+    
+    // Fungsi keanggotaan Sedang (15-30°C)
+    if ($value >= 15 && $value <= 22.5) {
+        $result['sedang'] = ($value - 15) / 7.5;
+    } elseif ($value > 22.5 && $value <= 30) {
+        $result['sedang'] = (30 - $value) / 7.5;
+    }
+    
+    // Fungsi keanggotaan Panas (25-50°C)
+    if ($value >= 25 && $value < 30) {
+        $result['panas'] = ($value - 25) / 5;
+    } elseif ($value >= 30) {
+        $result['panas'] = 1;
+    }
+    
+    return $result;
+}
+
+/**
+ * ------------ FUNGSI KEANGGOTAAN INTENSITAS CAHAYA ------------
+ * Rendah: 0-400 lux
+ * Sedang: 300-700 lux
+ * Tinggi: 600-1000 lux
+ */
+function lightIntensityMembership($value) {
+    $result = [
+        'rendah' => 0,
+        'sedang' => 0,
+        'tinggi' => 0
+    ];
+    
+    // Fungsi keanggotaan Rendah (0-400 lux)
+    if ($value <= 300) {
+        $result['rendah'] = 1;
+    } elseif ($value > 300 && $value < 400) {
+        $result['rendah'] = (400 - $value) / 100;
+    }
+    
+    // Fungsi keanggotaan Sedang (300-700 lux)
+    if ($value >= 300 && $value <= 500) {
+        $result['sedang'] = ($value - 300) / 200;
+    } elseif ($value > 500 && $value <= 700) {
+        $result['sedang'] = (700 - $value) / 200;
+    }
+    
+    // Fungsi keanggotaan Tinggi (600-1000 lux)
+    if ($value >= 600 && $value < 700) {
+        $result['tinggi'] = ($value - 600) / 100;
+    } elseif ($value >= 700) {
+        $result['tinggi'] = 1;
+    }
+    
+    return $result;
+}
+
+/**
+ * ------------ FUNGSI KEANGGOTAAN KELEMBABAN UDARA ------------
+ * Rendah: 0-40%
+ * Sedang: 30-70%
+ * Tinggi: 60-100%
+ */
+function humidityMembership($value) {
+    $result = [
+        'rendah' => 0,
+        'sedang' => 0,
+        'tinggi' => 0
+    ];
+    
+    // Fungsi keanggotaan Rendah (0-40%)
+    if ($value <= 30) {
+        $result['rendah'] = 1;
+    } elseif ($value > 30 && $value < 40) {
+        $result['rendah'] = (40 - $value) / 10;
+    }
+    
+    // Fungsi keanggotaan Sedang (30-70%)
+    if ($value >= 30 && $value <= 50) {
+        $result['sedang'] = ($value - 30) / 20;
+    } elseif ($value > 50 && $value <= 70) {
+        $result['sedang'] = (70 - $value) / 20;
+    }
+    
+    // Fungsi keanggotaan Tinggi (60-100%)
+    if ($value >= 60 && $value < 70) {
+        $result['tinggi'] = ($value - 60) / 10;
+    } elseif ($value >= 70) {
+        $result['tinggi'] = 1;
+    }
+    
+    return $result;
+}
+
+/**
+ * ------------ FUNGSI INFERENSI FUZZY ------------
+ * Implementasi metode inferensi Mamdani (Min-Max)
+ */
+function fuzzyInference(
+    $soil_moisture_membership,
+    $air_temperature_membership,
+    $light_intensity_membership,
+    $humidity_membership
+) {
+    // Output untuk durasi irigasi (0-100 menit)
+    $irrigation_membership = [
+        'tidak_ada' => 0, // 0-20 menit
+        'singkat' => 0,   // 10-40 menit
+        'sedang' => 0,    // 30-70 menit
+        'lama' => 0       // 60-100 menit
+    ];
+    
+    // Output untuk pengaturan suhu (-10 sampai +10 derajat)
+    $temperature_membership = [
+        'menurunkan' => 0,    // -10 sampai -3 derajat
+        'mempertahankan' => 0, // -5 sampai +5 derajat
+        'menaikkan' => 0      // +3 sampai +10 derajat
+    ];
+    
+    // Output untuk kontrol pencahayaan (0-100%)
+    $light_control_membership = [
+        'mati' => 0,    // 0-20%
+        'redup' => 0,   // 10-40%
+        'sedang' => 0,  // 30-70%
+        'terang' => 0   // 60-100%
+    ];
+
+    // ==== BASIS ATURAN FUZZY ====
+    // Minimal 20 aturan sesuai dengan permintaan
+
+    // === ATURAN 1 ===
+    // JIKA kelembaban tanah KERING dan suhu udara PANAS dan intensitas cahaya TINGGI dan kelembaban udara RENDAH
+    // MAKA durasi irigasi LAMA, pengaturan suhu MENURUNKAN, kontrol pencahayaan REDUP
+    $rule1 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['tinggi'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['lama'] = max($irrigation_membership['lama'], $rule1);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule1);
+    $light_control_membership['redup'] = max($light_control_membership['redup'], $rule1);
+
+    // === ATURAN 2 ===
+    // JIKA kelembaban tanah KERING dan suhu udara PANAS dan intensitas cahaya TINGGI dan kelembaban udara SEDANG
+    // MAKA durasi irigasi LAMA, pengaturan suhu MENURUNKAN, kontrol pencahayaan SEDANG
+    $rule2 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['tinggi'],
+        $humidity_membership['sedang']
+    );
+    $irrigation_membership['lama'] = max($irrigation_membership['lama'], $rule2);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule2);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule2);
+
+    // === ATURAN 3 ===
+    // JIKA kelembaban tanah KERING dan suhu udara PANAS dan intensitas cahaya SEDANG dan kelembaban udara RENDAH
+    // MAKA durasi irigasi LAMA, pengaturan suhu MENURUNKAN, kontrol pencahayaan SEDANG
+    $rule3 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['lama'] = max($irrigation_membership['lama'], $rule3);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule3);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule3);
+
+    // === ATURAN 4 ===
+    // JIKA kelembaban tanah KERING dan suhu udara SEDANG dan intensitas cahaya RENDAH dan kelembaban udara RENDAH
+    // MAKA durasi irigasi LAMA, pengaturan suhu MEMPERTAHANKAN, kontrol pencahayaan TERANG
+    $rule4 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['sedang'],
+        $light_intensity_membership['rendah'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['lama'] = max($irrigation_membership['lama'], $rule4);
+    $temperature_membership['mempertahankan'] = max($temperature_membership['mempertahankan'], $rule4);
+    $light_control_membership['terang'] = max($light_control_membership['terang'], $rule4);
+
+    // === ATURAN 5 ===
+    // JIKA kelembaban tanah KERING dan suhu udara DINGIN dan intensitas cahaya RENDAH dan kelembaban udara RENDAH
+    // MAKA durasi irigasi SEDANG, pengaturan suhu MENAIKKAN, kontrol pencahayaan TERANG
+    $rule5 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['dingin'],
+        $light_intensity_membership['rendah'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['sedang'] = max($irrigation_membership['sedang'], $rule5);
+    $temperature_membership['menaikkan'] = max($temperature_membership['menaikkan'], $rule5);
+    $light_control_membership['terang'] = max($light_control_membership['terang'], $rule5);
+
+    // === ATURAN 6 ===
+    // JIKA kelembaban tanah SEDANG dan suhu udara PANAS dan intensitas cahaya TINGGI dan kelembaban udara RENDAH
+    // MAKA durasi irigasi SEDANG, pengaturan suhu MENURUNKAN, kontrol pencahayaan REDUP
+    $rule6 = min(
+        $soil_moisture_membership['sedang'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['tinggi'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['sedang'] = max($irrigation_membership['sedang'], $rule6);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule6);
+    $light_control_membership['redup'] = max($light_control_membership['redup'], $rule6);
+
+    // === ATURAN 7 ===
+    // JIKA kelembaban tanah SEDANG dan suhu udara SEDANG dan intensitas cahaya SEDANG dan kelembaban udara SEDANG
+    // MAKA durasi irigasi SEDANG, pengaturan suhu MEMPERTAHANKAN, kontrol pencahayaan SEDANG
+    $rule7 = min(
+        $soil_moisture_membership['sedang'],
+        $air_temperature_membership['sedang'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['sedang']
+    );
+    $irrigation_membership['sedang'] = max($irrigation_membership['sedang'], $rule7);
+    $temperature_membership['mempertahankan'] = max($temperature_membership['mempertahankan'], $rule7);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule7);
+
+    // === ATURAN 8 ===
+    // JIKA kelembaban tanah SEDANG dan suhu udara DINGIN dan intensitas cahaya RENDAH dan kelembaban udara TINGGI
+    // MAKA durasi irigasi SINGKAT, pengaturan suhu MENAIKKAN, kontrol pencahayaan TERANG
+    $rule8 = min(
+        $soil_moisture_membership['sedang'],
+        $air_temperature_membership['dingin'],
+        $light_intensity_membership['rendah'],
+        $humidity_membership['tinggi']
+    );
+    $irrigation_membership['singkat'] = max($irrigation_membership['singkat'], $rule8);
+    $temperature_membership['menaikkan'] = max($temperature_membership['menaikkan'], $rule8);
+    $light_control_membership['terang'] = max($light_control_membership['terang'], $rule8);
+
+    // === ATURAN 9 ===
+    // JIKA kelembaban tanah BASAH dan suhu udara PANAS dan intensitas cahaya TINGGI dan kelembaban udara SEDANG
+    // MAKA durasi irigasi TIDAK_ADA, pengaturan suhu MENURUNKAN, kontrol pencahayaan REDUP
+    $rule9 = min(
+        $soil_moisture_membership['basah'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['tinggi'],
+        $humidity_membership['sedang']
+    );
+    $irrigation_membership['tidak_ada'] = max($irrigation_membership['tidak_ada'], $rule9);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule9);
+    $light_control_membership['redup'] = max($light_control_membership['redup'], $rule9);
+
+    // === ATURAN 10 ===
+    // JIKA kelembaban tanah BASAH dan suhu udara SEDANG dan intensitas cahaya SEDANG dan kelembaban udara TINGGI
+    // MAKA durasi irigasi TIDAK_ADA, pengaturan suhu MEMPERTAHANKAN, kontrol pencahayaan SEDANG
+    $rule10 = min(
+        $soil_moisture_membership['basah'],
+        $air_temperature_membership['sedang'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['tinggi']
+    );
+    $irrigation_membership['tidak_ada'] = max($irrigation_membership['tidak_ada'], $rule10);
+    $temperature_membership['mempertahankan'] = max($temperature_membership['mempertahankan'], $rule10);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule10);
+
+    // === ATURAN 11 ===
+    // JIKA kelembaban tanah KERING dan suhu udara SEDANG dan intensitas cahaya SEDANG dan kelembaban udara SEDANG
+    // MAKA durasi irigasi LAMA, pengaturan suhu MEMPERTAHANKAN, kontrol pencahayaan SEDANG
+    $rule11 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['sedang'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['sedang']
+    );
+    $irrigation_membership['lama'] = max($irrigation_membership['lama'], $rule11);
+    $temperature_membership['mempertahankan'] = max($temperature_membership['mempertahankan'], $rule11);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule11);
+
+    // === ATURAN 12 ===
+    // JIKA kelembaban tanah SEDANG dan suhu udara PANAS dan intensitas cahaya SEDANG dan kelembaban udara RENDAH
+    // MAKA durasi irigasi SEDANG, pengaturan suhu MENURUNKAN, kontrol pencahayaan SEDANG
+    $rule12 = min(
+        $soil_moisture_membership['sedang'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['sedang'] = max($irrigation_membership['sedang'], $rule12);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule12);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule12);
+
+    // === ATURAN 13 ===
+    // JIKA kelembaban tanah BASAH dan suhu udara DINGIN dan intensitas cahaya TINGGI dan kelembaban udara RENDAH
+    // MAKA durasi irigasi TIDAK_ADA, pengaturan suhu MENAIKKAN, kontrol pencahayaan REDUP
+    $rule13 = min(
+        $soil_moisture_membership['basah'],
+        $air_temperature_membership['dingin'],
+        $light_intensity_membership['tinggi'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['tidak_ada'] = max($irrigation_membership['tidak_ada'], $rule13);
+    $temperature_membership['menaikkan'] = max($temperature_membership['menaikkan'], $rule13);
+    $light_control_membership['redup'] = max($light_control_membership['redup'], $rule13);
+
+    // === ATURAN 14 ===
+    // JIKA kelembaban tanah KERING dan suhu udara DINGIN dan intensitas cahaya SEDANG dan kelembaban udara TINGGI
+    // MAKA durasi irigasi SEDANG, pengaturan suhu MENAIKKAN, kontrol pencahayaan SEDANG
+    $rule14 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['dingin'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['tinggi']
+    );
+    $irrigation_membership['sedang'] = max($irrigation_membership['sedang'], $rule14);
+    $temperature_membership['menaikkan'] = max($temperature_membership['menaikkan'], $rule14);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule14);
+
+    // === ATURAN 15 ===
+    // JIKA kelembaban tanah SEDANG dan suhu udara SEDANG dan intensitas cahaya TINGGI dan kelembaban udara SEDANG
+    // MAKA durasi irigasi SEDANG, pengaturan suhu MEMPERTAHANKAN, kontrol pencahayaan REDUP
+    $rule15 = min(
+        $soil_moisture_membership['sedang'],
+        $air_temperature_membership['sedang'],
+        $light_intensity_membership['tinggi'],
+        $humidity_membership['sedang']
+    );
+    $irrigation_membership['sedang'] = max($irrigation_membership['sedang'], $rule15);
+    $temperature_membership['mempertahankan'] = max($temperature_membership['mempertahankan'], $rule15);
+    $light_control_membership['redup'] = max($light_control_membership['redup'], $rule15);
+
+    // === ATURAN 16 ===
+    // JIKA kelembaban tanah BASAH dan suhu udara PANAS dan intensitas cahaya RENDAH dan kelembaban udara RENDAH
+    // MAKA durasi irigasi TIDAK_ADA, pengaturan suhu MENURUNKAN, kontrol pencahayaan TERANG
+    $rule16 = min(
+        $soil_moisture_membership['basah'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['rendah'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['tidak_ada'] = max($irrigation_membership['tidak_ada'], $rule16);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule16);
+    $light_control_membership['terang'] = max($light_control_membership['terang'], $rule16);
+
+    // === ATURAN 17 ===
+    // JIKA kelembaban tanah KERING dan suhu udara SEDANG dan intensitas cahaya TINGGI dan kelembaban udara RENDAH
+    // MAKA durasi irigasi LAMA, pengaturan suhu MEMPERTAHANKAN, kontrol pencahayaan REDUP
+    $rule17 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['sedang'],
+        $light_intensity_membership['tinggi'],
+        $humidity_membership['rendah']
+    );
+    $irrigation_membership['lama'] = max($irrigation_membership['lama'], $rule17);
+    $temperature_membership['mempertahankan'] = max($temperature_membership['mempertahankan'], $rule17);
+    $light_control_membership['redup'] = max($light_control_membership['redup'], $rule17);
+
+    // === ATURAN 18 ===
+    // JIKA kelembaban tanah SEDANG dan suhu udara DINGIN dan intensitas cahaya SEDANG dan kelembaban udara SEDANG
+    // MAKA durasi irigasi SINGKAT, pengaturan suhu MENAIKKAN, kontrol pencahayaan SEDANG
+    $rule18 = min(
+        $soil_moisture_membership['sedang'],
+        $air_temperature_membership['dingin'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['sedang']
+    );
+    $irrigation_membership['singkat'] = max($irrigation_membership['singkat'], $rule18);
+    $temperature_membership['menaikkan'] = max($temperature_membership['menaikkan'], $rule18);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule18);
+
+    // === ATURAN 19 ===
+    // JIKA kelembaban tanah BASAH dan suhu udara DINGIN dan intensitas cahaya SEDANG dan kelembaban udara TINGGI
+    // MAKA durasi irigasi TIDAK_ADA, pengaturan suhu MENAIKKAN, kontrol pencahayaan SEDANG
+    $rule19 = min(
+        $soil_moisture_membership['basah'],
+        $air_temperature_membership['dingin'],
+        $light_intensity_membership['sedang'],
+        $humidity_membership['tinggi']
+    );
+    $irrigation_membership['tidak_ada'] = max($irrigation_membership['tidak_ada'], $rule19);
+    $temperature_membership['menaikkan'] = max($temperature_membership['menaikkan'], $rule19);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule19);
+
+    // === ATURAN 20 ===
+    // JIKA kelembaban tanah KERING dan suhu udara PANAS dan intensitas cahaya RENDAH dan kelembaban udara TINGGI
+    // MAKA durasi irigasi LAMA, pengaturan suhu MENURUNKAN, kontrol pencahayaan SEDANG
+    $rule20 = min(
+        $soil_moisture_membership['kering'],
+        $air_temperature_membership['panas'],
+        $light_intensity_membership['rendah'],
+        $humidity_membership['tinggi']
+    );
+    $irrigation_membership['lama'] = max($irrigation_membership['lama'], $rule20);
+    $temperature_membership['menurunkan'] = max($temperature_membership['menurunkan'], $rule20);
+    $light_control_membership['sedang'] = max($light_control_membership['sedang'], $rule20);
+
+    return [
+        'irrigation' => $irrigation_membership,
+        'temperature' => $temperature_membership,
+        'light_control' => $light_control_membership
+    ];
+}
+
+/**
+ * ------------ FUNGSI DEFUZZIFIKASI ------------
+ * Metode Centroid (Center of Gravity)
+ */
+function defuzzifyIrrigation($irrigation_membership) {
+    // Definisi rentang nilai output untuk durasi irigasi
+    $tidak_ada_range = range(0, 20);
+    $singkat_range = range(10, 40);
+    $sedang_range = range(30, 70);
+    $lama_range = range(60, 100);
+    
+    $numerator = 0;
+    $denominator = 0;
+    
+    // Hitung untuk setiap nilai dalam rentang
+    foreach ($tidak_ada_range as $i) {
+        // Fungsi keanggotaan trapesium untuk tidak ada
+        $membership = ($i <= 10) ? 1 : (20 - $i) / 10;
+        $membership = min($membership, $irrigation_membership['tidak_ada']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($singkat_range as $i) {
+        // Fungsi keanggotaan segitiga untuk singkat
+        if ($i < 10) {
+            $membership = 0;
+        } elseif ($i >= 10 && $i <= 25) {
+            $membership = ($i - 10) / 15;
+        } else {
+            $membership = (40 - $i) / 15;
+        }
+        $membership = min($membership, $irrigation_membership['singkat']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($sedang_range as $i) {
+        // Fungsi keanggotaan segitiga untuk sedang
+        if ($i < 30) {
+            $membership = 0;
+        } elseif ($i >= 30 && $i <= 50) {
+            $membership = ($i - 30) / 20;
+        } else {
+            $membership = (70 - $i) / 20;
+        }
+        $membership = min($membership, $irrigation_membership['sedang']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($lama_range as $i) {
+        // Fungsi keanggotaan trapesium untuk lama
+        $membership = ($i < 60) ? 0 : (($i >= 60 && $i < 80) ? ($i - 60) / 20 : 1);
+        $membership = min($membership, $irrigation_membership['lama']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    // Hindari pembagian dengan nol
+    if ($denominator == 0) {
+        return 0;
+    }
+    
+    // Nilai defuzzifikasi
+    return round($numerator / $denominator);
+}
+
+function defuzzifyTemperature($temperature_membership) {
+    // Definisi rentang nilai output untuk pengaturan suhu (-10 sampai +10)
+    $menurunkan_range = range(-10, -3);
+    $mempertahankan_range = range(-5, 5);
+    $menaikkan_range = range(3, 10);
+    
+    $numerator = 0;
+    $denominator = 0;
+    
+    // Hitung untuk setiap nilai dalam rentang
+    foreach ($menurunkan_range as $i) {
+        // Fungsi keanggotaan trapesium untuk menurunkan
+        $membership = ($i <= -7) ? 1 : (-3 - $i) / 4;
+        $membership = min($membership, $temperature_membership['menurunkan']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($mempertahankan_range as $i) {
+        // Fungsi keanggotaan segitiga untuk mempertahankan
+        if ($i < -5) {
+            $membership = 0;
+        } elseif ($i >= -5 && $i <= 0) {
+            $membership = ($i + 5) / 5;
+        } else {
+            $membership = (5 - $i) / 5;
+        }
+        $membership = min($membership, $temperature_membership['mempertahankan']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($menaikkan_range as $i) {
+        // Fungsi keanggotaan trapesium untuk menaikkan
+        $membership = ($i < 3) ? 0 : (($i >= 3 && $i < 7) ? ($i - 3) / 4 : 1);
+        $membership = min($membership, $temperature_membership['menaikkan']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    // Hindari pembagian dengan nol
+    if ($denominator == 0) {
+        return 0;
+    }
+    
+    // Nilai defuzzifikasi
+    return round($numerator / $denominator, 1);
+}
+
+function defuzzifyLightControl($light_control_membership) {
+    // Definisi rentang nilai output untuk kontrol pencahayaan (0-100%)
+    $mati_range = range(0, 20);
+    $redup_range = range(10, 40);
+    $sedang_range = range(30, 70);
+    $terang_range = range(60, 100);
+    
+    $numerator = 0;
+    $denominator = 0;
+    
+    // Hitung untuk setiap nilai dalam rentang
+    foreach ($mati_range as $i) {
+        // Fungsi keanggotaan trapesium untuk mati
+        $membership = ($i <= 10) ? 1 : (20 - $i) / 10;
+        $membership = min($membership, $light_control_membership['mati']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($redup_range as $i) {
+        // Fungsi keanggotaan segitiga untuk redup
+        if ($i < 10) {
+            $membership = 0;
+        } elseif ($i >= 10 && $i <= 25) {
+            $membership = ($i - 10) / 15;
+        } else {
+            $membership = (40 - $i) / 15;
+        }
+        $membership = min($membership, $light_control_membership['redup']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($sedang_range as $i) {
+        // Fungsi keanggotaan segitiga untuk sedang
+        if ($i < 30) {
+            $membership = 0;
+        } elseif ($i >= 30 && $i <= 50) {
+            $membership = ($i - 30) / 20;
+        } else {
+            $membership = (70 - $i) / 20;
+        }
+        $membership = min($membership, $light_control_membership['sedang']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    foreach ($terang_range as $i) {
+        // Fungsi keanggotaan trapesium untuk terang
+        $membership = ($i < 60) ? 0 : (($i >= 60 && $i < 80) ? ($i - 60) / 20 : 1);
+        $membership = min($membership, $light_control_membership['terang']);
+        $numerator += $i * $membership;
+        $denominator += $membership;
+    }
+    
+    // Hindari pembagian dengan nol
+    if ($denominator == 0) {
+        return 0;
+    }
+    
+    // Nilai defuzzifikasi
+    return round($numerator / $denominator);
+}
+
+/**
+ * ------------ FUNGSI UTAMA PERHITUNGAN FUZZY ------------
+ */
+function calculateFuzzyControl($soil_moisture, $air_temperature, $light_intensity, $humidity) {
+    // Langkah 1: Fuzzifikasi
+    $soil_moisture_membership = soilMoistureMembership($soil_moisture);
+    $air_temperature_membership = airTemperatureMembership($air_temperature);
+    $light_intensity_membership = lightIntensityMembership($light_intensity);
+    $humidity_membership = humidityMembership($humidity);
+    
+    // Langkah 2: Inferensi Fuzzy
+    $inferenceResult = fuzzyInference(
+        $soil_moisture_membership,
+        $air_temperature_membership,
+        $light_intensity_membership,
+        $humidity_membership
+    );
+    
+    // Langkah 3: Defuzzifikasi
+    $irrigation_duration_value = defuzzifyIrrigation($inferenceResult['irrigation']);
+    $temperature_setting_value = defuzzifyTemperature($inferenceResult['temperature']);
+    $light_control_value = defuzzifyLightControl($inferenceResult['light_control']);
+    
+    // Konversi nilai numerik ke linguistik
+    $irrigation_duration = getIrrigationLinguistic($irrigation_duration_value);
+    $temperature_setting = getTemperatureLinguistic($temperature_setting_value);
+    $light_control = getLightLinguistic($light_control_value);
+    
+    // Buat hasil untuk dikembalikan
+    return [
+        'input_memberships' => [
+            'soil_moisture' => $soil_moisture_membership,
+            'air_temperature' => $air_temperature_membership,
+            'light_intensity' => $light_intensity_membership,
+            'humidity' => $humidity_membership
+        ],
+        'output_memberships' => $inferenceResult,
+        'irrigation_duration' => $irrigation_duration,
+        'irrigation_duration_value' => $irrigation_duration_value,
+        'temperature_setting' => $temperature_setting,
+        'temperature_setting_value' => $temperature_setting_value,
+        'light_control' => $light_control,
+        'light_control_value' => $light_control_value
+    ];
+}
+
+/**
+ * ------------ FUNGSI KONVERSI NILAI KE LINGUISTIK ------------
+ */
+function getIrrigationLinguistic($value) {
+    if ($value <= 15) {
+        return 'Tidak Ada';
+    } elseif ($value <= 35) {
+        return 'Singkat';
+    } elseif ($value <= 65) {
+        return 'Sedang';
     } else {
-        return ['irrigation_duration' => 'singkat', 'temperature_setting' => 'menaikkan', 'light_control' => 'redyup'];
+        return 'Lama';
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    // Pastikan input_mode ada dalam data POST
-    $input_mode = isset($_POST['input_mode']) ? $_POST['input_mode'] : 'manual';  // Default ke manual jika tidak ada
-    
-    // Mengambil data input berdasarkan mode
-    if ($input_mode == 'manual') {
-        // Mengambil data input manual
-        $soil_moisture = $_POST['soil_moisture'];
-        $air_temperature = $_POST['air_temperature'];
-        $light_intensity = $_POST['light_intensity'];
-        $humidity = $_POST['humidity'];
+function getTemperatureLinguistic($value) {
+    if ($value <= -4) {
+        return 'Menurunkan';
+    } elseif ($value >= 4) {
+        return 'Menaikkan';
     } else {
-        // Mengambil data cuaca otomatis dari API (ini contoh, bisa lebih kompleks)
-        $soil_moisture = $_POST['soil_moisture'];
-        $air_temperature = $_POST['air_temperature'];
-        $light_intensity = $_POST['light_intensity'];
-        $humidity = $_POST['humidity'];
+        return 'Mempertahankan';
     }
+}
 
-    // Hitung output berdasarkan input
-    $output = calculate_fuzzy_output($soil_moisture, $air_temperature, $light_intensity, $humidity);
-
-    // Set header untuk respons JSON
-    header('Content-Type: application/json');
-    
-    // Kirimkan hasil perhitungan dalam format JSON
-    echo json_encode($output);
+function getLightLinguistic($value) {
+    if ($value <= 15) {
+        return 'Mati';
+    } elseif ($value <= 35) {
+        return 'Redup';
+    } elseif ($value <= 65) {
+        return 'Sedang';
+    } else {
+        return 'Terang';
+    }
 }
 ?>

@@ -1,74 +1,191 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Kontrol Cerdas Tomat</title>
+    <title>Sistem Kontrol Cerdas Tanaman Tomat</title>
     <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/chart_style.css">
+    <!-- Font Awesome untuk ikon -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- Chart.js untuk visualisasi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
 </head>
 
 <body>
-    <h1>Smart Farming - Kontrol Cerdas Tomat</h1>
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-seedling"></i> Sistem Kontrol Cerdas Tanaman Tomat</h1>
+            <p>Sistem Manajemen Berbasis Logika Fuzzy</p>
+        </header>
 
-    <form id="parameterForm">
-        <h2>Pilih Mode Input</h2>
-        <label for="input_mode">Pilih mode input:</label>
-        <select id="input_mode" name="input_mode" onchange="toggleInputMode()">
-            <option value="manual">Manual</option>
-            <option value="automatic">Otomatis (Data Cuaca)</option>
-        </select><br>
+        <div class="dashboard">
+            <div class="input-section">
+                <h2>Parameter Input</h2>
+                <form id="parameterForm">
+                    <!-- Input numerik untuk nilai sensor sebenarnya -->
+                    <div class="input-group">
+                        <label for="soil_moisture_value">Kelembaban Tanah (%):</label>
+                        <input type="number" id="soil_moisture_value" min="0" max="100" value="50">
+                        <div class="slider-container">
+                            <input type="range" id="soil_moisture_slider" min="0" max="100" value="50">
+                        </div>
+                        <div class="membership-value">
+                            <span>Keanggotaan: </span>
+                            <span id="soil_moisture_membership">Sedang</span>
+                        </div>
+                    </div>
 
-        <!-- Manual Input Fields -->
-        <div id="manualInput" style="display:block;">
-            <label for="soil_moisture">Kelembaban Tanah:</label>
-            <select id="soil_moisture" name="soil_moisture">
-                <option value="kering">Kering</option>
-                <option value="sedang">Sedang</option>
-                <option value="basah">Basah</option>
-            </select><br>
+                    <div class="input-group">
+                        <label for="air_temperature_value">Suhu Udara (°C):</label>
+                        <input type="number" id="air_temperature_value" min="0" max="50" value="25">
+                        <div class="slider-container">
+                            <input type="range" id="air_temperature_slider" min="0" max="50" value="25">
+                        </div>
+                        <div class="membership-value">
+                            <span>Keanggotaan: </span>
+                            <span id="air_temperature_membership">Sedang</span>
+                        </div>
+                    </div>
 
-            <label for="air_temperature">Suhu Udara:</label>
-            <select id="air_temperature" name="air_temperature">
-                <option value="dingin">Dingin</option>
-                <option value="sedang">Sedang</option>
-                <option value="panas">Panas</option>
-            </select><br>
+                    <div class="input-group">
+                        <label for="light_intensity_value">Intensitas Cahaya (lux):</label>
+                        <input type="number" id="light_intensity_value" min="0" max="1000" value="500">
+                        <div class="slider-container">
+                            <input type="range" id="light_intensity_slider" min="0" max="1000" value="500">
+                        </div>
+                        <div class="membership-value">
+                            <span>Keanggotaan: </span>
+                            <span id="light_intensity_membership">Sedang</span>
+                        </div>
+                    </div>
 
-            <label for="light_intensity">Intensitas Cahaya:</label>
-            <select id="light_intensity" name="light_intensity">
-                <option value="rendah">Rendah</option>
-                <option value="sedang">Sedang</option>
-                <option value="tinggi">Tinggi</option>
-            </select><br>
+                    <div class="input-group">
+                        <label for="humidity_value">Kelembaban Udara (%):</label>
+                        <input type="number" id="humidity_value" min="0" max="100" value="60">
+                        <div class="slider-container">
+                            <input type="range" id="humidity_slider" min="0" max="100" value="60">
+                        </div>
+                        <div class="membership-value">
+                            <span>Keanggotaan: </span>
+                            <span id="humidity_membership">Sedang</span>
+                        </div>
+                    </div>
 
-            <label for="humidity">Kelembaban Udara:</label>
-            <select id="humidity" name="humidity">
-                <option value="rendah">Rendah</option>
-                <option value="sedang">Sedang</option>
-                <option value="tinggi">Tinggi</option>
-            </select><br>
+                    <button type="button" id="calculateButton" class="primary-button">
+                        <i class="fas fa-calculator"></i> Hitung Output
+                    </button>
+                    <button type="button" id="saveButton" class="secondary-button">
+                        <i class="fas fa-save"></i> Simpan Pengaturan
+                    </button>
+                </form>
+            </div>
+
+            <div class="output-section">
+                <h2>Output Sistem Kontrol</h2>
+                <div class="output-cards">
+                    <div class="output-card" id="irrigation-card">
+                        <div class="card-icon">
+                            <i class="fas fa-tint"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Durasi Irigasi</h3>
+                            <p id="irrigation_duration_value">0</p>
+                            <div class="progress-bar">
+                                <div class="progress" id="irrigation_progress"></div>
+                            </div>
+                            <p id="irrigation_duration">Menunggu perhitungan...</p>
+                        </div>
+                    </div>
+
+                    <div class="output-card" id="temperature-card">
+                        <div class="card-icon">
+                            <i class="fas fa-thermometer-half"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Pengaturan Suhu</h3>
+                            <p id="temperature_setting_value">0</p>
+                            <div class="progress-bar">
+                                <div class="progress" id="temperature_progress"></div>
+                            </div>
+                            <p id="temperature_setting">Menunggu perhitungan...</p>
+                        </div>
+                    </div>
+
+                    <div class="output-card" id="light-card">
+                        <div class="card-icon">
+                            <i class="fas fa-lightbulb"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Kontrol Pencahayaan</h3>
+                            <p id="light_control_value">0</p>
+                            <div class="progress-bar">
+                                <div class="progress" id="light_progress"></div>
+                            </div>
+                            <p id="light_control">Menunggu perhitungan...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <!-- Automatic Input Fields (Hanya ditampilkan jika pilih otomatis) -->
-        <div id="automaticInput" style="display:none;">
-            <h3>Data Cuaca Otomatis</h3>
-            <p id="weatherData">Menunggu data cuaca...</p>
-            <button type="button" onclick="fetchWeatherData()">Ambil Data Cuaca</button><br><br>
+        <div class="visualization-section">
+            <h2>Visualisasi Fungsi Keanggotaan</h2>
+            <div class="fuzzy-visualizations">
+                <div class="fuzzy-chart">
+                    <h3>Kelembaban Tanah</h3>
+                    <canvas id="soilMoistureChart"></canvas>
+                </div>
+                <div class="fuzzy-chart">
+                    <h3>Suhu Udara</h3>
+                    <canvas id="airTemperatureChart"></canvas>
+                </div>
+                <div class="fuzzy-chart">
+                    <h3>Intensitas Cahaya</h3>
+                    <canvas id="lightIntensityChart"></canvas>
+                </div>
+                <div class="fuzzy-chart">
+                    <h3>Kelembaban Udara</h3>
+                    <canvas id="humidityChart"></canvas>
+                </div>
+            </div>
         </div>
 
-        <button type="button" onclick="submitParameters()">Hitung Output</button>
-    </form>
+        <div class="rules-section">
+            <h2>Aturan Fuzzy</h2>
+            <div class="rules-container">
+                <table id="rulesTable">
+                    <thead>
+                        <tr>
+                            <th>No</th>
+                            <th>Kelembaban Tanah</th>
+                            <th>Suhu Udara</th>
+                            <th>Intensitas Cahaya</th>
+                            <th>Kelembaban Udara</th>
+                            <th>Durasi Irigasi</th>
+                            <th>Pengaturan Suhu</th>
+                            <th>Kontrol Pencahayaan</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rulesBody">
+                        <!-- Diisi oleh JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
 
-    <div id="output">
-        <h2>Output:</h2>
-        <p id="irrigation_duration">Durasi Irigasi: </p>
-        <p id="temperature_setting">Pengaturan Suhu: </p>
-        <p id="light_control">Kontrol Pencahayaan: </p>
     </div>
 
-    <script src="javascript/weather_integration.js"></script>
+    <footer>
+        <p>&copy; 2025 Sistem Kontrol Cerdas Tanaman Tomat</p>
+    </footer>
+
+    <!-- Scripts -->
+    <script src="javascript/fuzzy_logic.js"></script>
     <script src="javascript/ui_interaction.js"></script>
+    <script src="javascript/chart.js"></script>
+    <script src="javascript/weather_integration.js"></script>
 </body>
 
 </html>
