@@ -148,40 +148,263 @@ const DashboardExtension = {
                 
                 <!-- Tab Kondisi Lingkungan -->
                 <div class="dashboard-tab" id="conditions-tab">
-                    <!-- Content for conditions tab -->
-                    <!-- (keeping the same as your original code) -->
+                    <div class="environment-grid">
+                        <div class="environment-card soil">
+                            <div class="env-icon">
+                                <i class="fas fa-water"></i>
+                            </div>
+                            <div class="env-content">
+                                <h3>Kelembaban Tanah</h3>
+                                <div class="env-value" id="soil-value">0%</div>
+                                <div class="env-optimal">
+                                    <span>Optimal: </span>
+                                    <span id="soil-optimal">50%</span>
+                                </div>
+                                <div class="env-range-slider">
+                                    <div class="range-track">
+                                        <div class="range-fill" id="soil-fill" style="width: 0%"></div>
+                                        <div class="optimal-marker" id="soil-marker" style="left: 50%"></div>
+                                        <div class="current-marker" id="soil-current" style="left: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="environment-card temperature">
+                            <div class="env-icon">
+                                <i class="fas fa-thermometer-half"></i>
+                            </div>
+                            <div class="env-content">
+                                <h3>Suhu Udara</h3>
+                                <div class="env-value" id="temp-value">0°C</div>
+                                <div class="env-optimal">
+                                    <span>Optimal: </span>
+                                    <span id="temp-optimal">25°C</span>
+                                </div>
+                                <div class="env-range-slider">
+                                    <div class="range-track">
+                                        <div class="range-fill" id="temp-fill" style="width: 0%"></div>
+                                        <div class="optimal-marker" id="temp-marker" style="left: 50%"></div>
+                                        <div class="current-marker" id="temp-current" style="left: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="environment-card light">
+                            <div class="env-icon">
+                                <i class="fas fa-sun"></i>
+                            </div>
+                            <div class="env-content">
+                                <h3>Intensitas Cahaya</h3>
+                                <div class="env-value" id="light-value">0 lux</div>
+                                <div class="env-optimal">
+                                    <span>Optimal: </span>
+                                    <span id="light-optimal">500 lux</span>
+                                </div>
+                                <div class="env-range-slider">
+                                    <div class="range-track">
+                                        <div class="range-fill" id="light-fill" style="width: 0%"></div>
+                                        <div class="optimal-marker" id="light-marker" style="left: 50%"></div>
+                                        <div class="current-marker" id="light-current" style="left: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="environment-card humidity">
+                            <div class="env-icon">
+                                <i class="fas fa-tint"></i>
+                            </div>
+                            <div class="env-content">
+                                <h3>Kelembaban Udara</h3>
+                                <div class="env-value" id="humidity-value">0%</div>
+                                <div class="env-optimal">
+                                    <span>Optimal: </span>
+                                    <span id="humidity-optimal">60%</span>
+                                </div>
+                                <div class="env-range-slider">
+                                    <div class="range-track">
+                                        <div class="range-fill" id="humidity-fill" style="width: 0%"></div>
+                                        <div class="optimal-marker" id="humidity-marker" style="left: 50%"></div>
+                                        <div class="current-marker" id="humidity-current" style="left: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-container">
+                        <div class="chart-wrapper">
+                            <h3>Kondisi Tanah dan Udara</h3>
+                            <canvas id="soil-air-chart"></canvas>
+                        </div>
+                        
+                        <div class="chart-wrapper">
+                            <h3>Intensitas Cahaya dan Kelembaban</h3>
+                            <canvas id="light-humidity-chart"></canvas>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Tab Riwayat -->
                 <div class="dashboard-tab" id="history-tab">
-                    <!-- Content for history tab -->
-                    <!-- (keeping the same as your original code) -->
+                    <div class="history-filters">
+                        <div class="filter-group">
+                            <label for="history-parameter">Parameter:</label>
+                            <select id="history-parameter">
+                                <option value="plant_health">Kesehatan Tanaman</option>
+                                <option value="growth_rate">Tingkat Pertumbuhan</option>
+                                <option value="soil_moisture">Kelembaban Tanah</option>
+                                <option value="air_temperature">Suhu Udara</option>
+                                <option value="light_intensity">Intensitas Cahaya</option>
+                                <option value="humidity">Kelembaban Udara</option>
+                            </select>
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label for="history-view">Tampilan:</label>
+                            <select id="history-view">
+                                <option value="daily">Harian</option>
+                                <option value="weekly">Mingguan</option>
+                                <option value="monthly">Bulanan</option>
+                            </select>
+                        </div>
+                        
+                        <button id="export-history-button" class="history-button">
+                            <i class="fas fa-download"></i> Ekspor Data
+                        </button>
+                    </div>
+                    
+                    <div class="history-chart-container">
+                        <canvas id="history-chart"></canvas>
+                    </div>
+                    
+                    <div class="history-table-container">
+                        <h3>Log Tindakan Kontrol</h3>
+                        <div class="history-table-wrapper">
+                            <table class="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>Tanggal</th>
+                                        <th>Fase</th>
+                                        <th>Irigasi</th>
+                                        <th>Pengaturan Suhu</th>
+                                        <th>Kontrol Cahaya</th>
+                                        <th>Kesehatan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="history-table-body">
+                                    <!-- Isi tabel akan dihasilkan melalui JS -->
+                                    <tr>
+                                        <td colspan="6" class="no-data">Memuat data...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
                 
                 <!-- Tab Prakiraan -->
                 <div class="dashboard-tab" id="forecast-tab">
-                    <!-- Content for forecast tab -->
-                    <!-- (keeping the same as your original code) -->
+                    <div class="forecast-header">
+                        <div class="current-weather" id="current-weather-display">
+                            <div class="weather-icon-large">
+                                <i class="fas fa-sun"></i>
+                            </div>
+                            <div class="current-weather-details">
+                                <h3>Cuaca Saat Ini</h3>
+                                <div class="current-weather-temp" id="current-weather-temp">--°C</div>
+                                <div class="current-weather-desc" id="current-weather-desc">--</div>
+                                <div class="current-weather-location" id="current-weather-location">--</div>
+                            </div>
+                        </div>
+                        
+                        <div class="forecast-actions">
+                            <button id="apply-weather-button" class="forecast-button">
+                                <i class="fas fa-play"></i> Terapkan ke Simulasi
+                            </button>
+                            <button id="refresh-weather-button" class="forecast-button">
+                                <i class="fas fa-sync-alt"></i> Refresh Data
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="forecast-cards" id="forecast-cards">
+                        <!-- Kartu prakiraan akan dihasilkan melalui JS -->
+                        <div class="forecast-card">
+                            <div class="forecast-date">--</div>
+                            <div class="forecast-icon"><i class="fas fa-cloud"></i></div>
+                            <div class="forecast-temp">--°C</div>
+                            <div class="forecast-desc">--</div>
+                        </div>
+                    </div>
+                    
+                    <div class="charts-container">
+                        <div class="chart-wrapper">
+                            <h3>Prakiraan Parameter 7 Hari</h3>
+                            <canvas id="forecast-chart"></canvas>
+                        </div>
+                        
+                        <div class="impact-analysis">
+                            <h3>Analisis Dampak Cuaca</h3>
+                            <div class="impact-grid">
+                                <div class="impact-item">
+                                    <div class="impact-label">Kelembaban Tanah:</div>
+                                    <div class="impact-value" id="impact-soil">--</div>
+                                </div>
+                                <div class="impact-item">
+                                    <div class="impact-label">Suhu Tanaman:</div>
+                                    <div class="impact-value" id="impact-temp">--</div>
+                                </div>
+                                <div class="impact-item">
+                                    <div class="impact-label">Pencahayaan:</div>
+                                    <div class="impact-value" id="impact-light">--</div>
+                                </div>
+                                <div class="impact-item">
+                                    <div class="impact-label">Kelembaban Udara:</div>
+                                    <div class="impact-value" id="impact-humidity">--</div>
+                                </div>
+                                <div class="impact-item">
+                                    <div class="impact-label">Pertumbuhan:</div>
+                                    <div class="impact-value" id="impact-growth">--</div>
+                                </div>
+                                <div class="impact-item">
+                                    <div class="impact-label">Kesehatan:</div>
+                                    <div class="impact-value" id="impact-health">--</div>
+                                </div>
+                            </div>
+                            
+                            <div class="weather-recommendations">
+                                <h4>Rekomendasi</h4>
+                                <ul id="weather-recommendations">
+                                    <li>Memuat rekomendasi...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         
-        
-        // Sisipkan dashboard setelah simulasi atau tampilan lainnya
-        const simulationContainer = document.querySelector('.simulation-container');
-
-        if (simulationContainer) {
-            simulationContainer.parentNode.insertBefore(dashboardSection, simulationContainer.nextSibling);
+        const dashboardPlaceholder = document.getElementById('dashboard-container-placeholder');
+        if (dashboardPlaceholder) {
+            // Hapus konten placeholder jika ada
+            dashboardPlaceholder.innerHTML = '';
+            // Tambahkan dashboard section
+            dashboardPlaceholder.appendChild(dashboardSection);
         } else {
-            // Jika tidak ada simulasi, masukkan setelah visualization
-            const visualizationSection = document.querySelector('.visualization-section');
-
-            if (visualizationSection) {
-                visualizationSection.parentNode.insertBefore(dashboardSection, visualizationSection.nextSibling);
+            console.error('Dashboard placeholder tidak ditemukan (ID: dashboard-container-placeholder)');
+            
+            // Fallback: Cari container dan tambahkan
+            const container = document.querySelector('.container');
+            if (container) {
+                container.appendChild(dashboardSection);
             } else {
-                document.querySelector('.container').appendChild(dashboardSection);
+                console.error('Tidak dapat menemukan elemen container untuk attach dashboard');
             }
         }
+
     },
 
     // Tambahkan stylesheet untuk dashboard
