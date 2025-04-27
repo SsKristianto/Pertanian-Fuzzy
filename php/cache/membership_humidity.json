@@ -1,1 +1,0 @@
-{"parameter":"humidity","functions":{"rendah":{"type":"trapezoid","points":[0,0,30,40]},"sedang":{"type":"triangle","points":[30,50,70]},"tinggi":{"type":"trapezoid","points":[60,70,100,100]}},"updated_at":"2025-04-27 03:10:04"}

@@ -1,1 +1,0 @@
-{"parameter":"air_temperature","functions":{"dingin":{"type":"trapezoid","points":[0,0,15,20]},"sedang":{"type":"triangle","points":[15,22.5,30]},"panas":{"type":"trapezoid","points":[25,30,50,50]}},"updated_at":"2025-04-26 13:26:20"}

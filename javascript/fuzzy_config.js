@@ -151,8 +151,8 @@ const FuzzyConfig = {
             </div>
         `;
 
-        
-        
+
+
         // Sisipkan setelah dashboard atau di akhir container
         const dashboardSection = document.querySelector('.dashboard-extension-container');
         const mainContainer = document.querySelector('.container');

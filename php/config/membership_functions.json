@@ -1,83 +1,11 @@
 {
-    "air_temperature": {
-        "dingin": {
+    "soil_moisture": {
+        "kering": {
             "type": "trapezoid",
             "points": [
                 0,
                 0,
-                15,
-                20
-            ]
-        },
-        "sedang": {
-            "type": "triangle",
-            "points": [
-                15,
-                22.5,
-                30
-            ]
-        },
-        "panas": {
-            "type": "trapezoid",
-            "points": [
-                25,
-                30,
-                50,
-                50
-            ]
-        }
-    },
-    "light_control": {
-        "mati": {
-            "type": "trapezoid",
-            "points": [
-                0,
-                0,
-                10,
-                20
-            ]
-        },
-        "redup": {
-            "type": "triangle",
-            "points": [
-                10,
-                25,
-                40
-            ]
-        },
-        "sedang": {
-            "type": "triangle",
-            "points": [
-                30,
-                50,
-                70
-            ]
-        },
-        "terang": {
-            "type": "trapezoid",
-            "points": [
                 60,
-                80,
-                100,
-                100
-            ]
-        }
-    },
-    "irrigation_duration": {
-        "tidak_ada": {
-            "type": "trapezoid",
-            "points": [
-                0,
-                0,
-                10,
-                20
-            ]
-        },
-        "singkat": {
-            "type": "triangle",
-            "points": [
-                10,
-                25,
                 40
             ]
         },
@@ -89,35 +17,7 @@
                 70
             ]
         },
-        "lama": {
-            "type": "trapezoid",
-            "points": [
-                60,
-                80,
-                100,
-                100
-            ]
-        }
-    },
-    "humidity": {
-        "rendah": {
-            "type": "trapezoid",
-            "points": [
-                0,
-                0,
-                30,
-                40
-            ]
-        },
-        "sedang": {
-            "type": "triangle",
-            "points": [
-                30,
-                50,
-                70
-            ]
-        },
-        "tinggi": {
+        "basah": {
             "type": "trapezoid",
             "points": [
                 60,

@@ -397,7 +397,7 @@ const DashboardExtension = {
                 </div>
             </div>
         `;
-        
+
         const dashboardPlaceholder = document.getElementById('dashboard-container-placeholder');
         if (dashboardPlaceholder) {
             // Hapus konten placeholder jika ada
@@ -406,7 +406,7 @@ const DashboardExtension = {
             dashboardPlaceholder.appendChild(dashboardSection);
         } else {
             console.error('Dashboard placeholder tidak ditemukan (ID: dashboard-container-placeholder)');
-            
+
             // Fallback: Cari container dan tambahkan
             const container = document.querySelector('.container');
             if (container) {
@@ -1112,13 +1112,13 @@ const DashboardExtension = {
 
         // Range time selector
         const timeRangeSelect = document.getElementById('time-range-select');
-    if (timeRangeSelect) {
-        timeRangeSelect.addEventListener('change', () => {
-            console.log('Time range changed to:', timeRangeSelect.value);
-            this.dashboard.timeRange = timeRangeSelect.value;
-            
-            // Perbarui semua grafik
-            this.loadDashboardData();
+        if (timeRangeSelect) {
+            timeRangeSelect.addEventListener('change', () => {
+                console.log('Time range changed to:', timeRangeSelect.value);
+                this.dashboard.timeRange = timeRangeSelect.value;
+
+                // Perbarui semua grafik
+                this.loadDashboardData();
             });
         }
 
@@ -1204,119 +1204,509 @@ const DashboardExtension = {
                 break;
         }
     },
-    
-    
+
+
     // Muat data dashboard
+    /*
+     * FUNGSI 1: loadDashboardData
+     * Fungsi ini memuat data untuk dashboard termasuk mengambil data cuaca
+     */
     loadDashboardData: function() {
         console.log("Attempting to load dashboard data with range:", this.dashboard.timeRange);
-        
+
         // Cek apakah ada simulasi aktif dan memiliki log
-        if (typeof GreenhouseSimulation !== 'undefined' && 
-            GreenhouseSimulation.simulation && 
-            GreenhouseSimulation.simulation.active === true && 
+        if (typeof GreenhouseSimulation !== 'undefined' &&
+            GreenhouseSimulation.simulation &&
+            GreenhouseSimulation.simulation.active === true &&
             GreenhouseSimulation.simulation.data) {
-            
+
             console.log('Found active simulation, using simulation data');
-            
+
             // Gunakan data langsung dari GreenhouseSimulation
             const simulationData = GreenhouseSimulation.simulation.data;
-            
+
             // Minta data log simulasi
             // Kita perlu mengambil log simulasi melalui AJAX request
             fetch('php/plant_simulation.php', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                body: `command=get_plant_state&simulation_id=${GreenhouseSimulation.simulation.id}`
-            })
-            .then(response => response.json())
-            .then(logData => {
-                if (logData.success && logData.simulation_log && logData.simulation_log.length > 0) {
-                    console.log('Retrieved simulation log data:', logData.simulation_log.length, 'entries');
-                    
-                    // Proses data log
-                    const historyDates = [];
-                    const historyHealth = [];
-                    const historyGrowth = [];
-                    const historySoil = [];
-                    const historyTemp = [];
-                    const historyLight = [];
-                    const historyHumidity = [];
-                    const historyActions = [];
-                    
-                    // Petakan data log ke format yang dibutuhkan dashboard
-                    logData.simulation_log.forEach(log => {
-                        historyDates.push(log.log_date);
-                        historyHealth.push(log.plant_health);
-                        historyGrowth.push(log.growth_rate);
-                        historySoil.push(log.soil_moisture);
-                        historyTemp.push(log.air_temperature);
-                        historyLight.push(log.light_intensity);
-                        historyHumidity.push(log.humidity);
-                        
-                        // Tambahkan data tindakan kontrol
-                        historyActions.push({
-                            date: log.log_date,
-                            stage: log.plant_stage,
-                            irrigation: log.irrigation_duration ? this.getIrrigationText(log.irrigation_duration) : 'sedang',
-                            temperature: log.temperature_setting ? this.getTemperatureText(log.temperature_setting) : 'mempertahankan',
-                            light: log.light_control ? this.getLightText(log.light_control) : 'sedang',
-                            health: log.plant_health
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: `command=get_plant_state&simulation_id=${GreenhouseSimulation.simulation.id}`
+                })
+                .then(response => response.json())
+                .then(logData => {
+                    if (logData.success && logData.simulation_log && logData.simulation_log.length > 0) {
+                        console.log('Retrieved simulation log data:', logData.simulation_log.length, 'entries');
+
+                        // Proses data log
+                        const historyDates = [];
+                        const historyHealth = [];
+                        const historyGrowth = [];
+                        const historySoil = [];
+                        const historyTemp = [];
+                        const historyLight = [];
+                        const historyHumidity = [];
+                        const historyActions = [];
+
+                        // Petakan data log ke format yang dibutuhkan dashboard
+                        logData.simulation_log.forEach(log => {
+                            historyDates.push(log.log_date);
+                            historyHealth.push(log.plant_health);
+                            historyGrowth.push(log.growth_rate);
+                            historySoil.push(log.soil_moisture);
+                            historyTemp.push(log.air_temperature);
+                            historyLight.push(log.light_intensity);
+                            historyHumidity.push(log.humidity);
+
+                            // Tambahkan data tindakan kontrol
+                            historyActions.push({
+                                date: log.log_date,
+                                stage: log.plant_stage,
+                                irrigation: log.irrigation_duration ? this.getIrrigationText(log.irrigation_duration) : 'sedang',
+                                temperature: log.temperature_setting ? this.getTemperatureText(log.temperature_setting) : 'mempertahankan',
+                                light: log.light_control ? this.getLightText(log.light_control) : 'sedang',
+                                health: log.plant_health
+                            });
                         });
-                    });
-                    
-                    // Buat struktur data yang dibutuhkan dashboard
-                    const dashboardData = {
-                        success: true,
-                        current: simulationData,
-                        trends: {
-                            health_trend: this.calculateTrend(historyHealth),
-                            growth_trend: this.calculateTrend(historyGrowth),
-                            fruit_trend: 0 // Perlu data historis buah untuk menghitung tren
-                        },
-                        optimal: simulationData.optimal_conditions || {
-                            soil_moisture: 50,
-                            air_temperature: 25,
-                            light_intensity: 500,
-                            humidity: 60
-                        },
-                        history: {
-                            dates: historyDates,
-                            health: historyHealth,
-                            growth_rate: historyGrowth,
-                            soil_moisture: historySoil,
-                            air_temperature: historyTemp,
-                            light_intensity: historyLight,
-                            humidity: historyHumidity,
-                            actions: historyActions
-                        },
-                        weather: this.dashboard.data ? this.dashboard.data.weather : {}
-                    };
-                    
-                    // Simpan data
-                    this.dashboard.data = dashboardData;
-                    
-                    // Perbarui UI
-                    this.updateDashboardUI();
-                } else {
-                    console.log('No simulation log available, using sample data');
+
+                        // Dapatkan data cuaca dari WeatherIntegration jika tersedia
+                        const weatherData = this.getWeatherDataForDashboard();
+
+                        // Buat struktur data yang dibutuhkan dashboard
+                        const dashboardData = {
+                            success: true,
+                            current: simulationData,
+                            trends: {
+                                health_trend: this.calculateTrend(historyHealth),
+                                growth_trend: this.calculateTrend(historyGrowth),
+                                fruit_trend: 0 // Perlu data historis buah untuk menghitung tren
+                            },
+                            optimal: simulationData.optimal_conditions || {
+                                soil_moisture: 50,
+                                air_temperature: 25,
+                                light_intensity: 500,
+                                humidity: 60
+                            },
+                            history: {
+                                dates: historyDates,
+                                health: historyHealth,
+                                growth_rate: historyGrowth,
+                                soil_moisture: historySoil,
+                                air_temperature: historyTemp,
+                                light_intensity: historyLight,
+                                humidity: historyHumidity,
+                                actions: historyActions
+                            },
+                            weather: weatherData
+                        };
+
+                        // Simpan data
+                        this.dashboard.data = dashboardData;
+
+                        // Perbarui UI
+                        this.updateDashboardUI();
+                    } else {
+                        console.log('No simulation log available, using sample data');
+                        this.loadSampleData();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching simulation log:', error);
                     this.loadSampleData();
-                }
-            })
-            .catch(error => {
-                console.error('Error fetching simulation log:', error);
-                this.loadSampleData();
-            });
+                });
         } else {
             console.log('No active simulation detected, using sample data');
             this.loadSampleData();
         }
     },
-    
+
+    /*
+     * FUNGSI 2: getWeatherDataForDashboard
+     * Fungsi ini mengambil data cuaca dari WeatherIntegration dan memformatnya untuk dashboard
+     */
+    getWeatherDataForDashboard: function() {
+        if (typeof WeatherIntegration !== 'undefined' && WeatherIntegration.weatherData) {
+            console.log('Using data from WeatherIntegration for dashboard');
+
+            // Cek apakah modul WeatherIntegration memiliki fungsi getWeatherDataForDashboard
+            if (typeof WeatherIntegration.getWeatherDataForDashboard === 'function') {
+                return WeatherIntegration.getWeatherDataForDashboard();
+            }
+
+            // Kalau tidak, buat format yang sesuai untuk dashboard
+            const weather = WeatherIntegration.weatherData;
+
+            // Format data cuaca saat ini
+            const current = {
+                temperature: weather.current.temp_c,
+                humidity: weather.current.humidity,
+                condition: weather.current.condition.text,
+                location: weather.location.name,
+                light_intensity: weather.current.light_intensity || 500
+            };
+
+            // Format data prakiraan
+            const forecast = [];
+            if (weather.forecast && weather.forecast.forecastday) {
+                weather.forecast.forecastday.forEach(day => {
+                    forecast.push({
+                        date: day.date,
+                        temperature: day.day.maxtemp_c,
+                        humidity: day.day.avghumidity || 60,
+                        condition: day.day.condition.text,
+                        light_intensity: this.estimateLightFromCondition(day.day.condition.text)
+                    });
+                });
+            }
+
+            // Buat analisis dampak cuaca
+            const impact = this.analyzeWeatherImpact(current, forecast);
+
+            // Buat rekomendasi berdasarkan dampak
+            const recommendations = this.generateWeatherRecommendations(impact);
+
+            return {
+                current: current,
+                forecast: forecast,
+                impact: impact,
+                recommendations: recommendations
+            };
+        } else {
+            console.log('WeatherIntegration not available, using default weather data');
+            return this.getDefaultWeatherData();
+        }
+    },
+
+    /*
+     * FUNGSI 3: estimateLightFromCondition
+     * Fungsi ini memperkirakan intensitas cahaya berdasarkan kondisi cuaca
+     */
+    estimateLightFromCondition: function(conditionText) {
+        const conditionLower = conditionText.toLowerCase();
+        let baseIntensity = 600;
+
+        if (conditionLower.includes('cerah') || conditionLower.includes('sunny') || conditionLower.includes('clear')) {
+            return Math.round(baseIntensity * 1.3); // Cerah
+        } else if (conditionLower.includes('berawan sebagian') || conditionLower.includes('partly cloudy')) {
+            return Math.round(baseIntensity * 1); // Berawan sebagian
+        } else if (conditionLower.includes('berawan') || conditionLower.includes('cloudy') || conditionLower.includes('overcast')) {
+            return Math.round(baseIntensity * 0.8); // Berawan penuh
+        } else if (conditionLower.includes('kabut') || conditionLower.includes('fog') || conditionLower.includes('mist')) {
+            return Math.round(baseIntensity * 0.6); // Berkabut
+        } else if (conditionLower.includes('hujan ringan') || conditionLower.includes('light rain')) {
+            return Math.round(baseIntensity * 0.5); // Hujan ringan
+        } else if (conditionLower.includes('hujan') || conditionLower.includes('rain')) {
+            return Math.round(baseIntensity * 0.3); // Hujan
+        } else if (conditionLower.includes('badai') || conditionLower.includes('storm') || conditionLower.includes('thunder')) {
+            return Math.round(baseIntensity * 0.2); // Badai
+        }
+
+        return baseIntensity; // Default
+    },
+
+    /*
+     * FUNGSI 4: analyzeWeatherImpact
+     * Fungsi ini menganalisis dampak cuaca pada parameter tanaman
+     */
+    analyzeWeatherImpact: function(current, forecast) {
+        // Analisis tren suhu
+        const temps = forecast.map(day => day.temperature);
+        const avgTemp = temps.reduce((sum, temp) => sum + temp, 0) / temps.length;
+
+        // Analisis tren curah hujan berdasarkan kondisi
+        const rainConditions = ['hujan', 'rain', 'storm', 'shower', 'drizzle', 'thunder'];
+        let rainDays = 0;
+
+        forecast.forEach(day => {
+            const conditionLower = day.condition.toLowerCase();
+            for (const cond of rainConditions) {
+                if (conditionLower.includes(cond)) {
+                    rainDays++;
+                    break;
+                }
+            }
+        });
+
+        const rainProbability = (rainDays / forecast.length) * 100;
+
+        // Analisis dampak pada parameter tanaman
+        let soilImpact, tempImpact, lightImpact, humidityImpact, growthImpact, healthImpact;
+
+        // Dampak pada kelembaban tanah
+        if (rainProbability > 60) {
+            soilImpact = "Akan meningkat karena curah hujan";
+        } else if (avgTemp > 30 && current.humidity < 60) {
+            soilImpact = "Cenderung menurun karena penguapan";
+        } else {
+            soilImpact = "Diperkirakan stabil";
+        }
+
+        // Dampak pada suhu
+        if (avgTemp > 30) {
+            tempImpact = "Cenderung tinggi, perlu perhatian";
+        } else if (avgTemp < 20) {
+            tempImpact = "Sedikit menurun";
+        } else {
+            tempImpact = "Dalam kisaran optimal";
+        }
+
+        // Dampak pada intensitas cahaya
+        if (rainProbability > 50) {
+            lightImpact = "Berkurang selama hujan";
+        } else if (rainProbability > 30) {
+            lightImpact = "Bervariasi tergantung awan";
+        } else {
+            lightImpact = "Cukup baik";
+        }
+
+        // Dampak pada kelembaban udara
+        if (rainProbability > 60) {
+            humidityImpact = "Meningkat";
+        } else if (avgTemp > 30 && current.humidity < 50) {
+            humidityImpact = "Cenderung rendah";
+        } else {
+            humidityImpact = "Dalam kisaran normal";
+        }
+
+        // Dampak pada pertumbuhan
+        if ((avgTemp > 32 || avgTemp < 18) && rainProbability > 60) {
+            growthImpact = "Mungkin melambat signifikan";
+        } else if (avgTemp > 30 || avgTemp < 20 || rainProbability > 50) {
+            growthImpact = "Mungkin melambat";
+        } else {
+            growthImpact = "Diperkirakan normal";
+        }
+
+        // Dampak pada kesehatan tanaman
+        if (rainProbability > 70 && avgTemp > 26) {
+            healthImpact = "Perlu perhatian";
+        } else if (rainProbability > 60 || avgTemp > 32 || avgTemp < 18) {
+            healthImpact = "Perlu pengawasan";
+        } else {
+            healthImpact = "Diperkirakan baik";
+        }
+
+        return {
+            soil_moisture: soilImpact,
+            air_temperature: tempImpact,
+            light_intensity: lightImpact,
+            humidity: humidityImpact,
+            growth_rate: growthImpact,
+            plant_health: healthImpact
+        };
+    },
+
+    /*
+     * FUNGSI 5: generateWeatherRecommendations
+     * Fungsi ini membuat rekomendasi berdasarkan dampak cuaca
+     */
+    generateWeatherRecommendations: function(impact) {
+        const recommendations = [];
+
+        if (impact.soil_moisture.includes("meningkat")) {
+            recommendations.push("Kurangi irigasi selama periode hujan");
+            recommendations.push("Pastikan drainase yang baik untuk menghindari genangan air");
+        } else if (impact.soil_moisture.includes("menurun")) {
+            recommendations.push("Tingkatkan frekuensi irigasi");
+        }
+
+        if (impact.light_intensity.includes("Berkurang") || impact.light_intensity.includes("rendah")) {
+            recommendations.push("Pertimbangkan pencahayaan tambahan pada hari mendung");
+        }
+
+        if (impact.air_temperature.includes("tinggi")) {
+            recommendations.push("Pertimbangkan naungan atau pemberian paranet pada waktu panas terik");
+        }
+
+        if (impact.plant_health.includes("perhatian")) {
+            recommendations.push("Tingkatkan pemantauan kesehatan tanaman dalam beberapa hari ke depan");
+        }
+
+        // Rekomendasi umum
+        recommendations.push("Pantau kelembaban tanah secara teratur");
+
+        return recommendations;
+    },
+
+    /*
+     * FUNGSI 6: getDefaultWeatherData
+     * Fungsi ini menyediakan data cuaca default jika WeatherIntegration tidak tersedia
+     */
+    getDefaultWeatherData: function() {
+        return {
+            current: {
+                temperature: 26,
+                humidity: 62,
+                condition: "Cerah",
+                location: "Palangka Raya",
+                light_intensity: 700
+            },
+            forecast: [{
+                    date: this.formatDate(new Date(Date.now() + 86400000)),
+                    temperature: 27,
+                    humidity: 65,
+                    condition: "Cerah Berawan",
+                    light_intensity: 650
+                },
+                {
+                    date: this.formatDate(new Date(Date.now() + 172800000)),
+                    temperature: 28,
+                    humidity: 68,
+                    condition: "Berawan",
+                    light_intensity: 600
+                },
+                {
+                    date: this.formatDate(new Date(Date.now() + 259200000)),
+                    temperature: 27,
+                    humidity: 70,
+                    condition: "Hujan Ringan",
+                    light_intensity: 400
+                },
+                {
+                    date: this.formatDate(new Date(Date.now() + 345600000)),
+                    temperature: 26,
+                    humidity: 75,
+                    condition: "Hujan",
+                    light_intensity: 300
+                },
+                {
+                    date: this.formatDate(new Date(Date.now() + 432000000)),
+                    temperature: 25,
+                    humidity: 72,
+                    condition: "Hujan Ringan",
+                    light_intensity: 350
+                }
+            ],
+            impact: {
+                soil_moisture: "Akan meningkat karena curah hujan",
+                air_temperature: "Sedikit menurun",
+                light_intensity: "Berkurang selama hujan",
+                humidity: "Meningkat",
+                growth_rate: "Mungkin melambat",
+                plant_health: "Perlu perhatian"
+            },
+            recommendations: [
+                "Kurangi irigasi selama periode hujan",
+                "Pertimbangkan pencahayaan tambahan pada hari mendung",
+                "Pastikan drainase yang baik untuk menghindari genangan air",
+                "Pantau kelembaban tanah secara teratur"
+            ]
+        };
+    },
+
+    /*
+     * FUNGSI 7: loadSampleData
+     * Fungsi ini membuat data sampel untuk dashboard ketika data nyata tidak tersedia
+     */
+    loadSampleData: function() {
+        // Data sampel
+        const sampleData = {
+            success: true,
+            current: {
+                plant_stage: 'vegetative',
+                days_in_current_stage: 12,
+                plant_health: 85,
+                growth_rate: 1.2,
+                soil_moisture: 58,
+                air_temperature: 24.5,
+                light_intensity: 650,
+                humidity: 62,
+                plant_height: 45,
+                fruit_count: 0,
+                days_since_start: 25
+            },
+            trends: {
+                health_trend: 5,
+                growth_trend: 0.1,
+                fruit_trend: 0
+            },
+            optimal: {
+                soil_moisture: 55,
+                air_temperature: 25,
+                light_intensity: 600,
+                humidity: 65
+            },
+            history: {
+                dates: this.generateSampleDates(7),
+                health: [75, 78, 80, 82, 83, 84, 85],
+                growth_rate: [1.0, 1.05, 1.1, 1.15, 1.15, 1.18, 1.2],
+                soil_moisture: [50, 52, 55, 57, 56, 57, 58],
+                air_temperature: [23, 23.5, 24, 24.5, 24, 24.2, 24.5],
+                light_intensity: [500, 550, 600, 620, 630, 640, 650],
+                humidity: [60, 61, 62, 63, 62, 62, 62],
+                actions: this.generateSampleActions()
+            },
+            // Gunakan getDefaultWeatherData untuk data cuaca sampel
+            weather: this.getDefaultWeatherData()
+        };
+
+        // Simpan data
+        this.dashboard.data = sampleData;
+
+        // Perbarui UI
+        this.updateDashboardUI();
+    },
+
+    /*
+     * FUNGSI 8: generateSampleDates
+     * Fungsi ini menghasilkan tanggal sampel untuk data dummy
+     */
+    generateSampleDates: function(days) {
+        const dates = [];
+        const now = new Date();
+
+        for (let i = days - 1; i >= 0; i--) {
+            const date = new Date(now);
+            date.setDate(date.getDate() - i);
+            dates.push(this.formatDate(date));
+        }
+
+        return dates;
+    },
+
+    /*
+     * FUNGSI 9: generateSampleActions
+     * Fungsi ini menghasilkan tindakan sampel untuk data dummy
+     */
+    generateSampleActions: function() {
+        const dates = this.generateSampleDates(7);
+        const actions = [];
+
+        // Tindakan untuk setiap tanggal
+        dates.forEach((date, index) => {
+            actions.push({
+                date: date,
+                stage: "vegetative",
+                irrigation: index < 3 ? "sedang" : "singkat",
+                temperature: "mempertahankan",
+                light: index < 2 ? "sedang" : "terang",
+                health: 75 + (index * 1.5)
+            });
+        });
+
+        return actions;
+    },
+
+    /*
+     * FUNGSI 10: addWeatherUpdateListener
+     * Fungsi ini menambahkan event listener untuk pembaruan data cuaca
+     */
+    addWeatherUpdateListener: function() {
+        document.addEventListener('weather-updated', (event) => {
+            console.log('Weather data updated, refreshing dashboard');
+            if (this.dashboard.initialized) {
+                // Perbarui data dashboard karena data cuaca diperbarui
+                this.loadDashboardData();
+            }
+        });
+    },
+
+
+
     getIrrigationText: function(value) {
         if (typeof value === 'string') return value;
-        
+
         if (value <= 15) return 'tidak_ada';
         if (value <= 35) return 'singkat';
         if (value <= 65) return 'sedang';
@@ -1325,15 +1715,15 @@ const DashboardExtension = {
 
     getTemperatureText: function(value) {
         if (typeof value === 'string') return value;
-        
+
         if (value <= -4) return 'menurunkan';
         if (value >= 4) return 'menaikkan';
         return 'mempertahankan';
     },
-    
+
     getLightText: function(value) {
         if (typeof value === 'string') return value;
-        
+
         if (value <= 15) return 'mati';
         if (value <= 35) return 'redup';
         if (value <= 65) return 'sedang';
@@ -1342,17 +1732,17 @@ const DashboardExtension = {
 
     calculateTrend: function(dataArray) {
         if (!dataArray || dataArray.length < 2) return 0;
-        
+
         // Ambil data dalam rentang yang sesuai dengan dashboard.timeRange
         const timeRange = parseInt(this.dashboard.timeRange);
         const relevantData = dataArray.slice(-timeRange);
-        
+
         if (relevantData.length < 2) return 0;
-        
+
         // Hitung perubahan
         const latestValue = relevantData[relevantData.length - 1];
         const earliestValue = relevantData[0];
-        
+
         return latestValue - earliestValue;
     },
 
@@ -1456,7 +1846,7 @@ const DashboardExtension = {
                     temperature: 26,
                     humidity: 62,
                     condition: "Cerah",
-                    location: "Jakarta",
+                    location: "Palangka Raya",
                     light_intensity: 700
                 },
                 forecast: [{
@@ -1941,22 +2331,22 @@ const DashboardExtension = {
     // Perbarui grafik tanah dan udara
     updateSoilAirChart: function() {
         if (!this.dashboard.data || !this.dashboard.data.history) return;
-    
+
         const history = this.dashboard.data.history;
-        
+
         // Persiapkan data berdasarkan rentang waktu yang dipilih
         const timeRange = parseInt(this.dashboard.timeRange);
         let dates = [...history.dates];
         let soilMoistureData = [...history.soil_moisture];
         let airTemperatureData = [...history.air_temperature];
-        
+
         // Batasi data sesuai rentang waktu yang dipilih
         if (dates.length > timeRange) {
             dates = dates.slice(-timeRange);
             soilMoistureData = soilMoistureData.slice(-timeRange);
             airTemperatureData = airTemperatureData.slice(-timeRange);
         }
-    
+
         // Jika grafik sudah dibuat, perbarui data
         if (this.dashboard.charts.soilAirChart) {
             this.dashboard.charts.soilAirChart.data.labels = dates.map(date => this.formatDate(date));
@@ -1969,12 +2359,12 @@ const DashboardExtension = {
             this.createSoilAirChart(dates, soilMoistureData, airTemperatureData, timeRange);
         }
     },
-    
+
     // Buat grafik tanah dan udara yang dimodifikasi
     createSoilAirChart: function(dates, soilMoistureData, airTemperatureData, timeRange) {
         const ctx = document.getElementById('soil-air-chart');
         if (!ctx) return;
-    
+
         this.dashboard.charts.soilAirChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -2040,26 +2430,26 @@ const DashboardExtension = {
             }
         });
     },
-    
+
     // Perbaikan untuk grafik intensitas cahaya dan kelembaban agar sesuai dengan rentang waktu yang dipilih
     updateLightHumidityChart: function() {
         if (!this.dashboard.data || !this.dashboard.data.history) return;
-    
+
         const history = this.dashboard.data.history;
-        
+
         // Persiapkan data berdasarkan rentang waktu yang dipilih
         const timeRange = parseInt(this.dashboard.timeRange);
         let dates = [...history.dates];
         let lightIntensityData = [...history.light_intensity];
         let humidityData = [...history.humidity];
-        
+
         // Batasi data sesuai rentang waktu yang dipilih
         if (dates.length > timeRange) {
             dates = dates.slice(-timeRange);
             lightIntensityData = lightIntensityData.slice(-timeRange);
             humidityData = humidityData.slice(-timeRange);
         }
-    
+
         // Jika grafik sudah dibuat, perbarui data
         if (this.dashboard.charts.lightHumidityChart) {
             this.dashboard.charts.lightHumidityChart.data.labels = dates.map(date => this.formatDate(date));
@@ -2072,12 +2462,12 @@ const DashboardExtension = {
             this.createLightHumidityChart(dates, lightIntensityData, humidityData, timeRange);
         }
     },
-    
+
     // Buat grafik cahaya dan kelembaban yang dimodifikasi
     createLightHumidityChart: function(dates, lightIntensityData, humidityData, timeRange) {
         const ctx = document.getElementById('light-humidity-chart');
         if (!ctx) return;
-    
+
         this.dashboard.charts.lightHumidityChart = new Chart(ctx, {
             type: 'line',
             data: {

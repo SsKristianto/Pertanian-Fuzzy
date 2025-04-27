@@ -1,7 +1,7 @@
 /**
  * weather_integration.js
  * 
- * File JavaScript untuk mengambil dan menampilkan data cuaca eksternal
+ * File JavaScript untuk mengambil dan menampilkan data cuaca dari WeatherAPI.com
  * untuk simulasi lingkungan dalam sistem kontrol cerdas tanaman tomat
  */
 
@@ -19,14 +19,19 @@ const WeatherIntegration = {
 
     // Konfigurasi
     config: {
-        // Coordinates (default: Jakarta)
-        latitude: -6.2088,
-        longitude: 106.8456,
+        // API Key untuk WeatherAPI.com (ganti dengan API key Anda)
+        apiKey: "ab0f72154b424c60a9b70250252504",
 
-        // Update interval in milliseconds (10 minutes)
-        updateInterval: 10 * 60 * 1000,
+        // Location (default: Palangkaraya)
+        location: "Palangkaraya",
 
-        // Format date only - FIX: removed timeStyle, using only dateStyle
+        // API URL
+        apiUrl: "https://api.weatherapi.com/v1",
+
+        // Update interval in milliseconds (30 minutes)
+        updateInterval: 30 * 60 * 1000,
+
+        // Format date only
         dateTimeFormat: {
             dateStyle: 'medium'
         }
@@ -90,47 +95,55 @@ const WeatherIntegration = {
             weatherSection.classList.add('loading');
         }
 
-        // Dalam aplikasi nyata, gunakan URL API cuaca yang sesungguhnya
-        // Contoh: OpenWeatherMap, AccuWeather, dll.
-        // 
-        // Untuk demo ini, kita akan mensimulasikan respon API dengan data cuaca acak
-        setTimeout(() => {
-            try {
-                // Simulasi data cuaca
+        // URL untuk mendapatkan data cuaca dan prakiraan
+        const forecastUrl = `${this.config.apiUrl}/forecast.json?key=${this.config.apiKey}&q=${this.config.location}&days=5&aqi=no&alerts=no`;
+
+        // Lakukan fetch API
+        fetch(forecastUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log("Data cuaca diterima:", data);
+
+                // Proses data cuaca
                 const now = new Date();
                 this.weatherData = {
                     location: {
-                        name: "Jakarta",
-                        region: "DKI Jakarta",
-                        country: "Indonesia"
+                        name: data.location.name,
+                        region: data.location.region,
+                        country: data.location.country
                     },
                     current: {
-                        temp_c: this.getRandomValue(25, 35, 1), // 25-35 °C
-                        humidity: this.getRandomValue(60, 90, 0), // 60-90%
-                        light_intensity: this.getRandomValue(300, 900, 0), // 300-900 lux
-                        soil_moisture: this.getRandomValue(30, 80, 0), // 30-80%
+                        temp_c: data.current.temp_c,
+                        humidity: data.current.humidity,
+                        light_intensity: this.calculateLightIntensity(data.current.condition.code, data.current.cloud),
+                        soil_moisture: this.estimateSoilMoisture(data.current.precip_mm, data.current.humidity),
                         condition: {
-                            text: this.getRandomWeatherCondition(),
-                            icon: this.getRandomWeatherIcon()
+                            text: data.current.condition.text,
+                            icon: data.current.condition.icon
                         },
-                        precip_mm: this.getRandomValue(0, 10, 1),
-                        wind_kph: this.getRandomValue(5, 20, 1),
-                        cloud: this.getRandomValue(0, 100, 0),
-                        last_updated: now.toISOString()
+                        precip_mm: data.current.precip_mm,
+                        wind_kph: data.current.wind_kph,
+                        cloud: data.current.cloud,
+                        last_updated: data.current.last_updated
                     },
                     forecast: {
-                        forecastday: [{
-                            date: now.toISOString().split('T')[0],
+                        forecastday: data.forecast.forecastday.map(day => ({
+                            date: day.date,
                             day: {
-                                maxtemp_c: this.getRandomValue(30, 38, 1),
-                                mintemp_c: this.getRandomValue(22, 28, 1),
-                                daily_chance_of_rain: this.getRandomValue(0, 100, 0),
+                                maxtemp_c: day.day.maxtemp_c,
+                                mintemp_c: day.day.mintemp_c,
+                                daily_chance_of_rain: day.day.daily_chance_of_rain,
                                 condition: {
-                                    text: this.getRandomWeatherCondition(),
-                                    icon: this.getRandomWeatherIcon()
+                                    text: day.day.condition.text,
+                                    icon: day.day.condition.icon
                                 }
                             }
-                        }]
+                        }))
                     }
                 };
 
@@ -145,24 +158,99 @@ const WeatherIntegration = {
                 // Tampilkan data cuaca
                 this.displayWeatherData();
 
-                // Pertimbangkan untuk secara otomatis menerapkan nilai cuaca
-                // this.applyWeatherToInputs();
+                // Kirim event bahwa data cuaca telah diperbarui
+                const weatherUpdatedEvent = new CustomEvent('weather-updated', {
+                    detail: this.weatherData
+                });
+                document.dispatchEvent(weatherUpdatedEvent);
 
                 // Hapus indikator loading
                 if (weatherSection) {
                     weatherSection.classList.remove('loading');
                 }
-            } catch (error) {
-                console.error('Error generating weather data:', error);
+            })
+            .catch(error => {
+                console.error('Error fetching weather data:', error);
                 this.fetchStatus.isLoading = false;
                 this.fetchStatus.error = error.message;
 
                 // Hapus indikator loading
                 if (weatherSection) {
                     weatherSection.classList.remove('loading');
+                    weatherSection.innerHTML = `
+                        <h2>Data Cuaca Terkini</h2>
+                        <div class="weather-container">
+                            <p class="weather-error">Terjadi kesalahan saat mengambil data cuaca: ${error.message}. Silakan coba lagi.</p>
+                            <button id="refreshWeatherBtn" class="secondary-button">
+                                <i class="fas fa-sync-alt"></i> Coba Lagi
+                            </button>
+                        </div>
+                    `;
+
+                    // Add event listener for retry
+                    const refreshBtn = document.getElementById('refreshWeatherBtn');
+                    if (refreshBtn) {
+                        refreshBtn.addEventListener('click', () => {
+                            this.fetchWeatherData();
+                        });
+                    }
                 }
-            }
-        }, 1500); // Simulasi delay jaringan 1.5 detik
+            });
+    },
+
+    // Hitung perkiraan intensitas cahaya berdasarkan kondisi cuaca
+    calculateLightIntensity: function(conditionCode, cloudCover) {
+        // Nilai dasar intensitas cahaya pada kondisi cerah
+        const baseLux = 800;
+
+        // Faktor reduksi berdasarkan tutupan awan (0-100%)
+        const cloudFactor = 1 - (cloudCover / 100) * 0.7;
+
+        // Faktor kondisi cuaca
+        let conditionFactor = 1.0;
+
+        // Kode kondisi dari WeatherAPI: https://www.weatherapi.com/docs/weather_conditions.json
+        if (conditionCode >= 1000 && conditionCode < 1030) {
+            // Cerah sampai berawan
+            conditionFactor = 1.0 - ((conditionCode - 1000) / 30) * 0.3;
+        } else if (conditionCode >= 1030 && conditionCode < 1100) {
+            // Kabut, berkabut
+            conditionFactor = 0.6;
+        } else if (conditionCode >= 1100 && conditionCode < 1200) {
+            // Hujan ringan
+            conditionFactor = 0.5;
+        } else if (conditionCode >= 1200 && conditionCode < 1300) {
+            // Hujan sedang-deras
+            conditionFactor = 0.3;
+        } else {
+            // Kondisi ekstrim lainnya (salju, badai, dll)
+            conditionFactor = 0.2;
+        }
+
+        // Hitung intensitas cahaya
+        const lightIntensity = Math.round(baseLux * cloudFactor * conditionFactor);
+
+        return Math.min(1000, Math.max(0, lightIntensity));
+    },
+
+    // Perkirakan kelembaban tanah berdasarkan curah hujan dan kelembaban udara
+    estimateSoilMoisture: function(precipMm, humidity) {
+        // Baseline untuk kelembaban tanah
+        const base = 40;
+
+        // Faktor pengaruh curah hujan
+        const precipFactor = Math.min(20, precipMm * 2);
+
+        // Faktor pengaruh kelembaban udara
+        const humidityFactor = (humidity - 50) * 0.2;
+
+        // Hitung perkiraan kelembaban tanah
+        let soilMoisture = base + precipFactor + humidityFactor;
+
+        // Pastikan nilai dalam rentang 0-100
+        soilMoisture = Math.min(100, Math.max(0, soilMoisture));
+
+        return Math.round(soilMoisture);
     },
 
     // Tampilkan data cuaca di UI
@@ -194,7 +282,7 @@ const WeatherIntegration = {
         }
 
         try {
-            // Format tanggal dan waktu update terakhir - FIX: Handle date formatting safely
+            // Format tanggal dan waktu update terakhir
             const lastUpdated = new Date(this.weatherData.current.last_updated);
             let formattedDate;
 
@@ -204,6 +292,11 @@ const WeatherIntegration = {
                 console.warn('Error formatting date with options, falling back to default format', error);
                 formattedDate = lastUpdated.toLocaleDateString('id-ID');
             }
+
+            // Persiapkan URL ikon
+            const iconUrl = this.weatherData.current.condition.icon.startsWith('//') ?
+                'https:' + this.weatherData.current.condition.icon :
+                this.weatherData.current.condition.icon;
 
             // Isi data cuaca ke UI
             weatherSection.innerHTML = `
@@ -216,7 +309,7 @@ const WeatherIntegration = {
                                 <p class="weather-updated">Update terakhir: ${formattedDate}</p>
                             </div>
                             <div class="weather-condition">
-                                <img src="${this.weatherData.current.condition.icon}" alt="${this.weatherData.current.condition.text}">
+                                <img src="${iconUrl}" alt="${this.weatherData.current.condition.text}">
                                 <p>${this.weatherData.current.condition.text}</p>
                             </div>
                         </div>
@@ -386,6 +479,29 @@ const WeatherIntegration = {
         } catch (error) {
             console.error('Error applying weather data to inputs:', error);
             this.showNotification('Gagal menerapkan data cuaca ke simulator.', 'error');
+        }
+    },
+
+    // Dapatkan lokasi pengguna
+    getUserLocation: function() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    // Gunakan koordinat untuk mendapatkan data cuaca
+                    this.config.location = `${position.coords.latitude},${position.coords.longitude}`;
+                    this.showNotification('Menggunakan lokasi saat ini untuk data cuaca', 'info');
+                    // Refresh data cuaca
+                    this.fetchWeatherData();
+                },
+                (error) => {
+                    console.warn(`Tidak bisa mendapatkan lokasi: ${error.message}`);
+                    // Fallback ke lokasi default
+                    this.showNotification('Menggunakan lokasi default: Palangkaraya', 'info');
+                }
+            );
+        } else {
+            console.warn('Geolocation tidak didukung di browser ini');
+            this.showNotification('Geolocation tidak didukung, menggunakan lokasi default', 'warning');
         }
     },
 
@@ -606,32 +722,192 @@ const WeatherIntegration = {
         document.head.appendChild(style);
     },
 
-    // Fungsi helper untuk mendapatkan nilai acak dalam rentang tertentu
-    getRandomValue: function(min, max, decimals = 0) {
-        const value = Math.random() * (max - min) + min;
-        return parseFloat(value.toFixed(decimals));
+    // Dapatkan data cuaca untuk dashboard
+    getWeatherDataForDashboard: function() {
+        if (!this.weatherData) {
+            return null;
+        }
+
+        // Format data cuaca untuk dashboard
+        const weatherForDashboard = {
+            current: {
+                temperature: this.weatherData.current.temp_c,
+                humidity: this.weatherData.current.humidity,
+                condition: this.weatherData.current.condition.text,
+                location: this.weatherData.location.name,
+                light_intensity: this.weatherData.current.light_intensity
+            },
+            forecast: this.weatherData.forecast.forecastday.map(day => ({
+                date: day.date,
+                temperature: day.day.maxtemp_c,
+                humidity: this.estimateHumidityFromRain(day.day.daily_chance_of_rain),
+                condition: day.day.condition.text,
+                light_intensity: this.estimateLightFromCondition(day.day.condition.text, day.day.condition.code)
+            })),
+            impact: this.calculateWeatherImpact(),
+            recommendations: this.generateRecommendations()
+        };
+
+        return weatherForDashboard;
     },
 
-    // Fungsi helper untuk mendapatkan kondisi cuaca acak
-    getRandomWeatherCondition: function() {
-        const conditions = [
-            'Cerah', 'Berawan', 'Hujan Ringan', 'Hujan Sedang',
-            'Berawan Sebagian', 'Mendung', 'Panas', 'Berkabut'
-        ];
-        return conditions[Math.floor(Math.random() * conditions.length)];
+    // Perkirakan kelembaban berdasarkan peluang hujan
+    estimateHumidityFromRain: function(rainChance) {
+        // Baseline kelembaban
+        const baseHumidity = 60;
+        // Tambahkan faktor peluang hujan
+        return Math.min(95, Math.max(30, baseHumidity + (rainChance - 50) * 0.3));
     },
 
-    // Fungsi helper untuk mendapatkan ikon cuaca acak
-    getRandomWeatherIcon: function() {
-        const icons = [
-            'https://cdn.weatherapi.com/weather/64x64/day/113.png', // Sunny
-            'https://cdn.weatherapi.com/weather/64x64/day/116.png', // Partly cloudy
-            'https://cdn.weatherapi.com/weather/64x64/day/119.png', // Cloudy
-            'https://cdn.weatherapi.com/weather/64x64/day/176.png', // Patchy rain
-            'https://cdn.weatherapi.com/weather/64x64/day/143.png', // Mist
-            'https://cdn.weatherapi.com/weather/64x64/day/299.png' // Moderate rain
-        ];
-        return icons[Math.floor(Math.random() * icons.length)];
+    // Perkirakan intensitas cahaya dari kondisi cuaca
+    estimateLightFromCondition: function(conditionText, conditionCode) {
+        const conditionLower = conditionText.toLowerCase();
+        let lightBase = 600; // Nilai dasar
+
+        if (conditionLower.includes('cerah') || conditionLower.includes('sunny') || conditionLower.includes('clear')) {
+            return Math.round(lightBase * 1.2);
+        } else if (conditionLower.includes('berawan') || conditionLower.includes('cloudy') || conditionLower.includes('overcast')) {
+            return Math.round(lightBase * 0.8);
+        } else if (conditionLower.includes('hujan') || conditionLower.includes('rain')) {
+            return Math.round(lightBase * 0.5);
+        } else if (conditionLower.includes('badai') || conditionLower.includes('storm')) {
+            return Math.round(lightBase * 0.3);
+        }
+
+        // Fallback ke kode kondisi
+        return this.calculateLightIntensity(conditionCode, 50);
+    },
+
+    // Hitung dampak cuaca untuk dashboard
+    calculateWeatherImpact: function() {
+        if (!this.weatherData || !this.weatherData.forecast || !this.weatherData.forecast.forecastday) {
+            return {
+                soil_moisture: "Tidak ada data",
+                air_temperature: "Tidak ada data",
+                light_intensity: "Tidak ada data",
+                humidity: "Tidak ada data",
+                growth_rate: "Tidak ada data",
+                plant_health: "Tidak ada data"
+            };
+        }
+
+        const forecast = this.weatherData.forecast.forecastday;
+
+        // Analisis tren suhu
+        const temps = forecast.map(day => day.day.maxtemp_c);
+        const avgTemp = temps.reduce((sum, temp) => sum + temp, 0) / temps.length;
+
+        // Analisis tren curah hujan
+        const rainChances = forecast.map(day => day.day.daily_chance_of_rain);
+        const avgRainChance = rainChances.reduce((sum, chance) => sum + chance, 0) / rainChances.length;
+
+        // Buat analisis dampak
+        const impact = {
+            soil_moisture: avgRainChance > 70 ? "Akan meningkat karena curah hujan tinggi" :
+                (avgRainChance > 40 ? "Sedikit meningkat" : "Mungkin menurun, perlu irigasi"),
+
+            air_temperature: avgTemp > 32 ? "Cenderung tinggi, perlu perhatian" :
+                (avgTemp > 25 ? "Dalam kisaran optimal" : "Cenderung rendah"),
+
+            light_intensity: avgRainChance > 60 ? "Berkurang selama periode hujan" :
+                (avgRainChance > 30 ? "Bervariasi, tergantung kondisi awan" : "Cukup baik"),
+
+            humidity: avgRainChance > 60 ? "Meningkat, perlu ventilasi" :
+                (avgRainChance > 30 ? "Dalam kisaran normal" : "Mungkin rendah"),
+
+            growth_rate: this.assesGrowthImpact(avgTemp, avgRainChance),
+
+            plant_health: this.assessHealthImpact(avgTemp, avgRainChance)
+        };
+
+        return impact;
+    },
+
+    // Nilai dampak pada pertumbuhan
+    assesGrowthImpact: function(avgTemp, avgRainChance) {
+        // Suhu ideal untuk tanaman tomat sekitar 21-27°C
+        const tempFactor = avgTemp > 35 ? "terhambat karena suhu terlalu tinggi" :
+            avgTemp < 15 ? "melambat karena suhu terlalu rendah" :
+            avgTemp > 27 ? "sedikit melambat karena suhu agak tinggi" :
+            avgTemp < 21 ? "sedikit melambat karena suhu agak rendah" :
+            "optimal dari segi suhu";
+
+        // Cuaca hujan berpengaruh pada fotosintesis
+        const rainFactor = avgRainChance > 80 ? "terhambat karena kurang cahaya" :
+            avgRainChance > 60 ? "sedikit melambat karena cahaya berkurang" :
+            "normal dari segi cahaya";
+
+        if (tempFactor.includes("optimal") && rainFactor.includes("normal")) {
+            return "Diperkirakan optimal";
+        } else if (tempFactor.includes("terhambat") || rainFactor.includes("terhambat")) {
+            return "Mungkin melambat signifikan";
+        } else {
+            return "Sedikit melambat";
+        }
+    },
+
+    // Nilai dampak pada kesehatan tanaman
+    assessHealthImpact: function(avgTemp, avgRainChance) {
+        // Risiko penyakit meningkat pada kelembaban tinggi
+        if (avgRainChance > 80 && avgTemp > 25) {
+            return "Perlu perhatian ekstra (risiko jamur dan penyakit tinggi)";
+        } else if (avgRainChance > 60) {
+            return "Perlu pengawasan (risiko penyakit sedang)";
+        } else if (avgTemp > 35) {
+            return "Perlu perhatian pada stres panas";
+        } else if (avgTemp < 15) {
+            return "Perlu perhatian pada stres dingin";
+        } else {
+            return "Diperkirakan stabil";
+        }
+    },
+
+    // Hasilkan rekomendasi berdasarkan prakiraan cuaca
+    generateRecommendations: function() {
+        if (!this.weatherData || !this.weatherData.forecast || !this.weatherData.forecast.forecastday) {
+            return ["Tidak ada data cuaca untuk menghasilkan rekomendasi"];
+        }
+
+        const forecast = this.weatherData.forecast.forecastday;
+        const recommendations = [];
+
+        // Analisis tren suhu
+        const temps = forecast.map(day => day.day.maxtemp_c);
+        const avgTemp = temps.reduce((sum, temp) => sum + temp, 0) / temps.length;
+        const maxTemp = Math.max(...temps);
+
+        // Analisis tren curah hujan
+        const rainChances = forecast.map(day => day.day.daily_chance_of_rain);
+        const avgRainChance = rainChances.reduce((sum, chance) => sum + chance, 0) / rainChances.length;
+        const maxRainChance = Math.max(...rainChances);
+
+        // Rekomendasi berdasarkan curah hujan
+        if (avgRainChance > 60) {
+            recommendations.push("Kurangi irigasi selama periode hujan");
+            recommendations.push("Pastikan drainase yang baik untuk menghindari genangan air");
+        } else if (avgRainChance < 30 && avgTemp > 28) {
+            recommendations.push("Tingkatkan frekuensi irigasi untuk mengatasi suhu tinggi");
+        }
+
+        // Rekomendasi berdasarkan suhu
+        if (maxTemp > 32) {
+            recommendations.push("Pertimbangkan naungan atau pemberian paranet pada waktu panas terik");
+        }
+
+        // Rekomendasi berdasarkan kondisi cahaya
+        if (avgRainChance > 50) {
+            recommendations.push("Pertimbangkan pencahayaan tambahan pada hari mendung");
+        }
+
+        // Rekomendasi umum
+        recommendations.push("Pantau kelembaban tanah secara teratur");
+
+        // Jika kemungkinan hujan tinggi, risiko penyakit juga tinggi
+        if (maxRainChance > 70 && avgTemp > 25) {
+            recommendations.push("Awasi tanda-tanda penyakit jamur karena kelembaban tinggi");
+        }
+
+        return recommendations;
     }
 };
 

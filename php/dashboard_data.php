@@ -118,7 +118,7 @@ function getDashboardData() {
         // Dapatkan kondisi optimal untuk tahap pertumbuhan saat ini
         $optimal = getOptimalConditions($currentData['plant_stage']);
         
-        // Dapatkan data cuaca (dalam implementasi nyata, ini bisa dari API cuaca)
+        // Dapatkan data cuaca dari WeatherAPI
         $weatherData = getWeatherData();
         
         // Susun respons
@@ -349,63 +349,212 @@ function getOptimalConditions($plant_stage) {
 }
 
 /**
- * Dapatkan data cuaca (simulasi)
+ * Dapatkan data cuaca dari WeatherAPI.com
  */
 function getWeatherData() {
-    // Tanggal saat ini
-    $today = date('Y-m-d');
+    // Konfigurasi WeatherAPI
+    $apiKey = "MASUKKAN_API_KEY_ANDA_DISINI"; // Ganti dengan API key Anda
+    $location = "Palangkaraya"; // Lokasi default
+    $url = "https://api.weatherapi.com/v1/forecast.json?key={$apiKey}&q={$location}&days=5&aqi=no&alerts=no";
     
-    // Buat data cuaca simulasi
-    $current = [
-        'temperature' => rand(22, 30),
-        'humidity' => rand(50, 80),
-        'condition' => getRandomWeatherCondition(),
-        'location' => 'Jakarta',
-        'light_intensity' => rand(300, 800)
-    ];
+    // Periksa apakah data cuaca sudah di-cache
+    $cacheFile = sys_get_temp_dir() . '/weather_cache.json';
+    $cacheExpiry = 3600; // 1 jam (dalam detik)
     
-    // Buat prakiraan cuaca
-    $forecast = [];
-    for ($i = 1; $i <= 5; $i++) {
-        $forecast[] = [
-            'date' => date('Y-m-d', strtotime("+$i days")),
-            'temperature' => rand(20, 32),
-            'humidity' => rand(50, 85),
-            'condition' => getRandomWeatherCondition(),
-            'light_intensity' => rand(200, 900)
-        ];
+    // Gunakan cache jika ada dan masih valid
+    if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $cacheExpiry)) {
+        $weatherData = json_decode(file_get_contents($cacheFile), true);
+        return $weatherData;
     }
     
-    // Analisis dampak cuaca terhadap tanaman
-    $impact = generateWeatherImpact($current, $forecast);
-    
-    // Buat rekomendasi
-    $recommendations = generateWeatherRecommendations($impact);
-    
-    return [
-        'current' => $current,
-        'forecast' => $forecast,
-        'impact' => $impact,
-        'recommendations' => $recommendations
-    ];
+    try {
+        // Siapkan opsi untuk request cURL
+        $options = [
+            CURLOPT_URL => $url,
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 10,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_HTTPHEADER => [
+                'Accept: application/json',
+                'Cache-Control: no-cache'
+            ]
+        ];
+        
+        // Inisialisasi cURL
+        $ch = curl_init();
+        curl_setopt_array($ch, $options);
+        
+        // Eksekusi request
+        $response = curl_exec($ch);
+        $err = curl_error($ch);
+        
+        // Tutup koneksi cURL
+        curl_close($ch);
+        
+        // Jika ada error, lempar exception
+        if ($err) {
+            throw new Exception("Error saat mengambil data cuaca: " . $err);
+        }
+        
+        // Decode response JSON
+        $data = json_decode($response, true);
+        
+        // Validasi response
+        if (!isset($data['location']) || !isset($data['current']) || !isset($data['forecast'])) {
+            throw new Exception("Format data cuaca tidak valid");
+        }
+        
+        // Proses data untuk format yang dibutuhkan dashboard
+        $current = [
+            'temperature' => $data['current']['temp_c'],
+            'humidity' => $data['current']['humidity'],
+            'condition' => $data['current']['condition']['text'],
+            'location' => $data['location']['name'],
+            'light_intensity' => calculateLightIntensity($data['current']['condition']['code'], $data['current']['cloud'])
+        ];
+        
+        // Proses data prakiraan
+        $forecast = [];
+        foreach ($data['forecast']['forecastday'] as $day) {
+            $forecast[] = [
+                'date' => $day['date'],
+                'temperature' => $day['day']['maxtemp_c'],
+                'humidity' => estimateHumidityFromRain($day['day']['daily_chance_of_rain']),
+                'condition' => $day['day']['condition']['text'],
+                'light_intensity' => estimateLightFromCondition($day['day']['condition']['text'], $day['day']['condition']['code'])
+            ];
+        }
+        
+        // Analisis dampak cuaca
+        $impact = generateWeatherImpact($current, $forecast);
+        
+        // Hasilkan rekomendasi
+        $recommendations = generateWeatherRecommendations($impact);
+        
+        // Format akhir data cuaca
+        $weatherData = [
+            'current' => $current,
+            'forecast' => $forecast,
+            'impact' => $impact,
+            'recommendations' => $recommendations
+        ];
+        
+        // Simpan ke cache
+        file_put_contents($cacheFile, json_encode($weatherData));
+        
+        return $weatherData;
+        
+    } catch (Exception $e) {
+        error_log("Weather API Error: " . $e->getMessage());
+        
+        // Jika gagal mengambil dari API, gunakan data default/simulator
+        return getDefaultWeatherData();
+    }
 }
 
 /**
- * Dapatkan kondisi cuaca acak
+ * Hitung perkiraan intensitas cahaya dari kondisi cuaca
  */
-function getRandomWeatherCondition() {
-    $conditions = [
-        'Cerah', 'Berawan', 'Hujan Ringan', 'Hujan Sedang',
-        'Berawan Sebagian', 'Mendung', 'Panas', 'Berkabut'
-    ];
-    return $conditions[array_rand($conditions)];
+function calculateLightIntensity($conditionCode, $cloudCover) {
+    // Nilai dasar intensitas cahaya pada kondisi cerah
+    $baseLux = 800;
+    
+    // Faktor reduksi berdasarkan tutupan awan (0-100%)
+    $cloudFactor = 1 - ($cloudCover / 100) * 0.7;
+    
+    // Faktor kondisi cuaca
+    $conditionFactor = 1.0;
+    
+    // Kode kondisi dari WeatherAPI
+    if ($conditionCode >= 1000 && $conditionCode < 1030) {
+        // Cerah sampai berawan
+        $conditionFactor = 1.0 - (($conditionCode - 1000) / 30) * 0.3;
+    } else if ($conditionCode >= 1030 && $conditionCode < 1100) {
+        // Kabut, berkabut
+        $conditionFactor = 0.6;
+    } else if ($conditionCode >= 1100 && $conditionCode < 1200) {
+        // Hujan ringan
+        $conditionFactor = 0.5;
+    } else if ($conditionCode >= 1200 && $conditionCode < 1300) {
+        // Hujan sedang-deras
+        $conditionFactor = 0.3;
+    } else {
+        // Kondisi ekstrim lainnya (salju, badai, dll)
+        $conditionFactor = 0.2;
+    }
+    
+    // Hitung intensitas cahaya
+    $lightIntensity = round($baseLux * $cloudFactor * $conditionFactor);
+    
+    return min(1000, max(0, $lightIntensity));
 }
 
 /**
- * Buat analisis dampak cuaca
+ * Perkirakan kelembaban dari peluang hujan
+ */
+function estimateHumidityFromRain($rainChance) {
+    // Baseline kelembaban
+    $baseHumidity = 60;
+    // Tambahkan faktor peluang hujan
+    return min(95, max(30, $baseHumidity + ($rainChance - 50) * 0.3));
+}
+
+/**
+ * Perkirakan intensitas cahaya dari kondisi cuaca (teks)
+ */
+function estimateLightFromCondition($conditionText, $conditionCode = null) {
+    $conditionLower = strtolower($conditionText);
+    $lightBase = 600; // Nilai dasar
+    
+    if (strpos($conditionLower, 'cerah') !== false || 
+        strpos($conditionLower, 'sunny') !== false || 
+        strpos($conditionLower, 'clear') !== false) {
+        return round($lightBase * 1.2);
+    } else if (strpos($conditionLower, 'berawan') !== false || 
+              strpos($conditionLower, 'cloudy') !== false || 
+              strpos($conditionLower, 'overcast') !== false) {
+        return round($lightBase * 0.8);
+    } else if (strpos($conditionLower, 'hujan') !== false || 
+              strpos($conditionLower, 'rain') !== false) {
+        return round($lightBase * 0.5);
+    } else if (strpos($conditionLower, 'badai') !== false || 
+              strpos($conditionLower, 'storm') !== false) {
+        return round($lightBase * 0.3);
+    }
+    
+    // Jika kode kondisi tersedia, gunakan fungsi lain
+    if ($conditionCode !== null) {
+        return calculateLightIntensity($conditionCode, 50);
+    }
+    
+    // Fallback ke nilai default
+    return $lightBase;
+}
+
+/**
+ * Buat analisis dampak cuaca untuk dashboard
  */
 function generateWeatherImpact($current, $forecast) {
-    // Analisis dampak berdasarkan kondisi cuaca saat ini dan prakiraan
+    // Analisis tren suhu
+    $temps = array_column($forecast, 'temperature');
+    $avgTemp = array_sum($temps) / count($temps);
+    
+    // Analisis tren curah hujan berdasarkan kondisi
+    $rainConditions = ['Hujan', 'Rain', 'Drizzle', 'Shower', 'Thunderstorm'];
+    $rainDays = 0;
+    
+    foreach ($forecast as $day) {
+        foreach ($rainConditions as $condition) {
+            if (strpos($day['condition'], $condition) !== false) {
+                $rainDays++;
+                break;
+            }
+        }
+    }
+    
+    $rainProbability = $rainDays / count($forecast) * 100;
+    
+    // Buat analisis dampak
     $soilImpact = 'Stabil';
     $tempImpact = 'Stabil';
     $lightImpact = 'Stabil';
@@ -413,46 +562,52 @@ function generateWeatherImpact($current, $forecast) {
     $growthImpact = 'Stabil';
     $healthImpact = 'Baik';
     
-    // Cek kondisi hujan
-    $rainForecast = array_filter($forecast, function($day) {
-        return strpos($day['condition'], 'Hujan') !== false;
-    });
-    
-    if (count($rainForecast) >= 3) {
+    // Analisis kelembaban tanah
+    if ($rainProbability > 60) {
         $soilImpact = 'Akan meningkat karena curah hujan';
-        $lightImpact = 'Berkurang selama hujan';
-        $humidityImpact = 'Meningkat';
-        
-        if ($current['temperature'] < 22) {
-            $tempImpact = 'Menurun, perlu perhatian';
-            $growthImpact = 'Mungkin melambat';
-            $healthImpact = 'Perlu perhatian';
-        }
-    }
-    
-    // Cek suhu tinggi
-    $highTempDays = array_filter($forecast, function($day) {
-        return $day['temperature'] > 30;
-    });
-    
-    if (count($highTempDays) >= 3) {
+    } else if ($avgTemp > 30 && $current['humidity'] < 60) {
         $soilImpact = 'Cenderung menurun karena penguapan';
-        $tempImpact = 'Meningkat, perlu pendinginan';
-        
-        if ($current['humidity'] < 60) {
-            $growthImpact = 'Dapat terhambat oleh panas';
-            $healthImpact = 'Perlu perhatian ekstra';
-        }
     }
     
-    // Cek cahaya rendah
-    $lowLightDays = array_filter($forecast, function($day) {
-        return $day['light_intensity'] < 400;
-    });
+    // Analisis suhu
+    if ($avgTemp > 30) {
+        $tempImpact = 'Cenderung tinggi, perlu perhatian';
+    } else if ($avgTemp < 18) {
+        $tempImpact = 'Cenderung rendah';
+    } else if ($avgTemp >= 22 && $avgTemp <= 28) {
+        $tempImpact = 'Dalam kisaran optimal';
+    }
     
-    if (count($lowLightDays) >= 3) {
-        $lightImpact = 'Kurang optimal, pertimbangkan pencahayaan tambahan';
-        $growthImpact = 'Dapat melambat karena kurang cahaya';
+    // Analisis cahaya
+    if ($rainProbability > 60) {
+        $lightImpact = 'Berkurang selama periode hujan';
+    } else if (array_sum(array_column($forecast, 'light_intensity')) / count($forecast) < 400) {
+        $lightImpact = 'Cenderung rendah, pertimbangkan pencahayaan tambahan';
+    }
+    
+    // Analisis kelembaban udara
+    if ($rainProbability > 60) {
+        $humidityImpact = 'Meningkat, perlu ventilasi';
+    } else if ($avgTemp > 30 && $current['humidity'] < 50) {
+        $humidityImpact = 'Mungkin rendah, perlu ditingkatkan';
+    }
+    
+    // Analisis pertumbuhan
+    if (($avgTemp > 30 || $avgTemp < 18) && $rainProbability > 70) {
+        $growthImpact = 'Mungkin melambat signifikan';
+    } else if ($avgTemp > 28 || $avgTemp < 20 || $rainProbability > 50) {
+        $growthImpact = 'Sedikit melambat';
+    } else {
+        $growthImpact = 'Diperkirakan optimal';
+    }
+    
+    // Analisis kesehatan
+    if ($rainProbability > 70 && $avgTemp > 27) {
+        $healthImpact = 'Perlu perhatian ekstra (risiko jamur dan penyakit)';
+    } else if ($rainProbability > 60 || $avgTemp > 32 || $avgTemp < 18) {
+        $healthImpact = 'Perlu pengawasan';
+    } else {
+        $healthImpact = 'Diperkirakan stabil';
     }
     
     return [
@@ -473,38 +628,112 @@ function generateWeatherRecommendations($impact) {
     
     if (strpos($impact['soil_moisture'], 'meningkat') !== false) {
         $recommendations[] = 'Kurangi irigasi selama periode hujan';
+        $recommendations[] = 'Pastikan drainase yang baik untuk menghindari genangan air';
+    } else if (strpos($impact['soil_moisture'], 'menurun') !== false) {
+        $recommendations[] = 'Tingkatkan frekuensi irigasi untuk mengatasi penguapan';
     }
     
-    if (strpos($impact['light_intensity'], 'Kurang') !== false || strpos($impact['light_intensity'], 'Berkurang') !== false) {
+    if (strpos($impact['light_intensity'], 'rendah') !== false || 
+        strpos($impact['light_intensity'], 'Berkurang') !== false) {
         $recommendations[] = 'Pertimbangkan pencahayaan tambahan pada hari mendung';
     }
     
-    if (strpos($impact['soil_moisture'], 'meningkat') !== false) {
-        $recommendations[] = 'Pastikan drainase yang baik untuk menghindari genangan air';
-    }
-    
-    if (strpos($impact['air_temperature'], 'Meningkat') !== false) {
+    if (strpos($impact['air_temperature'], 'tinggi') !== false) {
         $recommendations[] = 'Tingkatkan sirkulasi udara dan pertimbangkan pendinginan tambahan';
+        $recommendations[] = 'Pertimbangkan naungan atau pemberian paranet pada waktu panas terik';
+    } else if (strpos($impact['air_temperature'], 'rendah') !== false) {
+        $recommendations[] = 'Pertimbangkan penggunaan sistem pemanas jika tersedia';
     }
     
     if (strpos($impact['humidity'], 'Meningkat') !== false) {
-        $recommendations[] = 'Pantau kelembaban tanah secara teratur';
+        $recommendations[] = 'Tingkatkan ventilasi untuk mencegah kelembaban berlebih';
+    } else if (strpos($impact['humidity'], 'rendah') !== false) {
+        $recommendations[] = 'Pertimbangkan penyemprotan air atau teknik meningkatkan kelembaban';
     }
     
-    if (strpos($impact['growth_rate'], 'melambat') !== false || strpos($impact['growth_rate'], 'terhambat') !== false) {
+    if (strpos($impact['growth_rate'], 'melambat') !== false || 
+        strpos($impact['growth_rate'], 'terhambat') !== false) {
         $recommendations[] = 'Sesuaikan parameter kontrol untuk mengoptimalkan pertumbuhan';
     }
     
     if (strpos($impact['plant_health'], 'perhatian') !== false) {
         $recommendations[] = 'Tingkatkan pemantauan kesehatan tanaman dalam beberapa hari ke depan';
+        $recommendations[] = 'Awasi tanda-tanda penyakit jamur karena kelembaban tinggi';
     }
     
-    // Jika tidak ada rekomendasi spesifik, berikan rekomendasi umum
+    // Tambahkan rekomendasi umum jika belum ada rekomendasi
     if (empty($recommendations)) {
         $recommendations[] = 'Kondisi cuaca mendukung pertumbuhan, pertahankan parameter kontrol saat ini';
-        $recommendations[] = 'Lakukan pemantauan rutin untuk memastikan kondisi optimal';
     }
+    
+    // Selalu tambahkan rekomendasi monitoring
+    $recommendations[] = 'Pantau kelembaban tanah secara teratur';
     
     return $recommendations;
 }
+
+/**
+ * Dapatkan data cuaca default jika API gagal
+ */
+function getDefaultWeatherData() {
+    // Tanggal saat ini
+    $today = date('Y-m-d');
+    
+    // Buat data cuaca simulasi
+    $current = [
+        'temperature' => rand(22, 30),
+        'humidity' => rand(50, 80),
+        'condition' => getRandomWeatherCondition(),
+        'location' => 'Palangkaraya',
+        'light_intensity' => rand(300, 800)
+    ];
+    
+    // Buat prakiraan cuaca
+    $forecast = [];
+    for ($i = 1; $i <= 5; $i++) {
+        $forecast[] = [
+            'date' => date('Y-m-d', strtotime("+$i days")),
+            'temperature' => rand(20, 32),
+            'humidity' => rand(50, 85),
+            'condition' => getRandomWeatherCondition(),
+            'light_intensity' => rand(200, 900)
+        ];
+    }
+    
+    // Analisis dampak cuaca terhadap tanaman
+    $impact = [
+        'soil_moisture' => 'Stabil',
+        'air_temperature' => 'Dalam kisaran normal',
+        'light_intensity' => 'Cukup baik',
+        'humidity' => 'Dalam kisaran normal',
+        'growth_rate' => 'Diperkirakan normal',
+        'plant_health' => 'Diperkirakan stabil'
+    ];
+    
+    // Buat rekomendasi
+    $recommendations = [
+        'Pantau kelembaban tanah secara teratur',
+        'Lakukan pemantauan rutin untuk memastikan kondisi optimal',
+        'Sesuaikan parameter kontrol berdasarkan fase pertumbuhan tanaman'
+    ];
+    
+    return [
+        'current' => $current,
+        'forecast' => $forecast,
+        'impact' => $impact,
+        'recommendations' => $recommendations
+    ];
+}
+
+/**
+ * Dapatkan kondisi cuaca acak
+ */
+function getRandomWeatherCondition() {
+    $conditions = [
+        'Cerah', 'Berawan', 'Hujan Ringan', 'Hujan Sedang',
+        'Berawan Sebagian', 'Mendung', 'Panas', 'Berkabut'
+    ];
+    return $conditions[array_rand($conditions)];
+}
+
 ?>

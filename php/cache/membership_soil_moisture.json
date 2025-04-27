@@ -1,0 +1,1 @@
+{"parameter":"soil_moisture","functions":{"kering":{"type":"trapezoid","points":[0,0,60,40]},"sedang":{"type":"triangle","points":[30,50,70]},"basah":{"type":"trapezoid","points":[60,70,100,100]}},"updated_at":"2025-04-27 05:52:53"}

@@ -24,17 +24,14 @@
         <!-- Tab Navigasi Utama -->
         <div class="main-nav">
             <button class="tab-nav active" data-tab="control-panel">
-                <i class="fas fa-sliders-h"></i> Panel Kontrol
-            </button>
+            <i class="fas fa-sliders-h"></i> Panel Kontrol
+        </button>
             <button class="tab-nav" data-tab="simulation-panel">
-                <i class="fas fa-leaf"></i> Simulasi Tanaman
-            </button>
-            <button class="tab-nav" data-tab="dashboard-panel">
-                <i class="fas fa-chart-line"></i> Dashboard
-            </button>
-            <button class="tab-nav" data-tab="config-panel">
-                <i class="fas fa-cogs"></i> Konfigurasi
-            </button>
+            <i class="fas fa-leaf"></i> Simulasi Tanaman
+        </button>
+            <button class="tab-nav" data-tab="dashboard-config-panel">
+            <i class="fas fa-chart-line"></i> Dashboard & Konfigurasi
+        </button>
         </div>
 
         <!-- Panel Kontrol (Default) -->
@@ -93,11 +90,11 @@
                         </div>
 
                         <button type="button" id="calculateButton" class="primary-button">
-                            <i class="fas fa-calculator"></i> Hitung Output
-                        </button>
+                                <i class="fas fa-calculator"></i> Hitung Output
+                            </button>
                         <button type="button" id="saveButton" class="secondary-button">
-                            <i class="fas fa-save"></i> Simpan Pengaturan
-                        </button>
+                                <i class="fas fa-save"></i> Simpan Pengaturan
+                            </button>
                     </form>
                 </div>
 
@@ -201,6 +198,33 @@
             <div id="simulation-container-placeholder"></div>
         </div>
 
+        <!-- Tambahkan setelah panel simulasi -->
+        <div class="tab-content" id="dashboard-config-panel">
+            <h2><i class="fas fa-chart-line"></i> Dashboard & Konfigurasi Sistem</h2>
+
+            <!-- Container untuk dashboard -->
+            <div id="dashboard-container-placeholder"></div>
+
+            <!-- Container untuk konfigurasi -->
+            <div class="config-section-container">
+                <h3><i class="fas fa-cogs"></i> Konfigurasi Sistem</h3>
+                <div class="config-section-tabs">
+                    <button class="config-section-tab active" data-section="membership-config">
+                <i class="fas fa-chart-line"></i> Fungsi Keanggotaan
+            </button>
+                    <button class="config-section-tab" data-section="rules-config">
+                <i class="fas fa-list-ol"></i> Aturan Fuzzy
+            </button>
+                    <button class="config-section-tab" data-section="adaptive-config">
+                <i class="fas fa-brain"></i> Pembelajaran Adaptif
+            </button>
+                </div>
+                <div id="membership-config" class="config-section-content active"></div>
+                <div id="rules-config" class="config-section-content"></div>
+                <div id="adaptive-config" class="config-section-content"></div>
+            </div>
+        </div>
+
         <!-- Panel Dashboard -->
         <div class="tab-content" id="dashboard-panel">
             <!-- Container untuk dashboard akan diisi oleh DashboardExtension.initialize() -->
@@ -212,14 +236,14 @@
             <!-- Tab Konfigurasi -->
             <div class="config-section-tabs">
                 <button class="config-section-tab active" data-section="membership-config">
-                    <i class="fas fa-chart-line"></i> Fungsi Keanggotaan
-                </button>
+                        <i class="fas fa-chart-line"></i> Fungsi Keanggotaan
+                    </button>
                 <button class="config-section-tab" data-section="rules-config">
-                    <i class="fas fa-list-ol"></i> Aturan Fuzzy
-                </button>
+                        <i class="fas fa-list-ol"></i> Aturan Fuzzy
+                    </button>
                 <button class="config-section-tab" data-section="adaptive-config">
-                    <i class="fas fa-brain"></i> Pembelajaran Adaptif
-                </button>
+                        <i class="fas fa-brain"></i> Pembelajaran Adaptif
+                    </button>
             </div>
 
             <!-- Container untuk konfigurasi akan diisi oleh FuzzyConfig.initialize() -->
@@ -406,36 +430,28 @@
                 }
             });
 
-            // Lazy-load initialization for configuration
-            document.querySelector('[data-tab="config-panel"]').addEventListener('click', function() {
-            if (!configInitialized) {
-                // Initialize configuration
-                setTimeout(() => {
-                    const membershipPlaceholder = document.getElementById('membership-config');
-                    const rulesPlaceholder = document.getElementById('rules-config');
-                    const adaptivePlaceholder = document.getElementById('adaptive-config');
+            // Ganti bagian initialization script di index.html
+            // Lazy-load initialization for dashboard & configuration
+            document.querySelector('[data-tab="dashboard-config-panel"]').addEventListener('click', function() {
+                if (!dashboardInitialized) {
+                    // Initialize dashboard
+                    setTimeout(() => {
+                        document.getElementById('dashboard-container-placeholder').innerHTML = '';
+                        DashboardExtension.initialize();
+                        dashboardInitialized = true;
+                    }, 100);
+                }
 
-                    if (!membershipPlaceholder || !rulesPlaceholder || !adaptivePlaceholder) {
-                        const container = document.querySelector('.container');
-                        if (container) {
-                            const configSection = document.createElement('div');
-                            configSection.className = 'config-section';
-                            configSection.innerHTML = `
-                                <div id="membership-config" class="config-section-content active"></div>
-                                <div id="rules-config" class="config-section-content"></div>
-                                <div id="adaptive-config" class="config-section-content"></div>
-                            `;
-                            container.appendChild(configSection);
-                        }
-                    }
-
-                    // One at a time with delays to avoid conflicts
-                    setTimeout(() => FuzzyConfig.initialize(), 100);
-                    setTimeout(() => AdaptiveLearning.initialize(), 300);
-                    configInitialized = true;
-                }, 100);
-            }
-        });
+                if (!configInitialized) {
+                    // Initialize configuration
+                    setTimeout(() => {
+                        // One at a time with delays to avoid conflicts
+                        setTimeout(() => FuzzyConfig.initialize(), 300);
+                        setTimeout(() => AdaptiveLearning.initialize(), 500);
+                        configInitialized = true;
+                    }, 200);
+                }
+            });
         });
     </script>
 </body>
