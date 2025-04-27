@@ -151,15 +151,33 @@ const FuzzyConfig = {
             </div>
         `;
 
+        
+        
         // Sisipkan setelah dashboard atau di akhir container
         const dashboardSection = document.querySelector('.dashboard-extension-container');
         const mainContainer = document.querySelector('.container');
+
+        const simulationContainer = document.querySelector('.simulation-container');
+
+        if (simulationContainer) {
+            simulationContainer.insertAdjacentElement('afterend', configSection);
+        } else if (dashboardSection) {
+            dashboardSection.insertAdjacentElement('afterend', configSection);
+        } else {
+            const container = document.querySelector('.container');
+            if (container) {
+                container.insertAdjacentElement('beforeend', configSection);
+            }
+        }
+
 
         if (dashboardSection) {
             dashboardSection.parentNode.insertBefore(configSection, dashboardSection.nextSibling);
         } else {
             mainContainer.appendChild(configSection);
         }
+
+
     },
 
     // Tambahkan stylesheet untuk konfigurasi
