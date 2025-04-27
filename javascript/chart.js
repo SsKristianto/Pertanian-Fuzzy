@@ -18,27 +18,64 @@ const FuzzyCharts = {
 
     // Memuat definisi fungsi keanggotaan dari server
     loadMembershipFunctions: function() {
+        console.log('Loading membership functions...');
         fetch('php/get_data.php?type=membership_functions')
             .then(response => response.json())
             .then(data => {
+                console.log('Received membership data:', data);
                 if (data.success) {
                     this.membershipFunctions = data.data;
-                    this.createCharts();
+                    // Validate that we have all required membership functions
+                    if (this.validateMembershipFunctions()) {
+                        this.createCharts();
+                    } else {
+                        console.error('Incomplete membership functions data received');
+                    }
                 } else {
                     console.error('Error loading membership functions:', data.message);
                 }
             })
             .catch(error => {
-                console.error('Error:', error);
+                console.error('Error fetching membership functions:', error);
             });
+    },
+
+    // Validate that all required membership functions exist
+    validateMembershipFunctions: function() {
+        const requiredKeys = ['soil_moisture', 'air_temperature', 'light_intensity', 'humidity'];
+        return requiredKeys.every(key => {
+            const exists = key in this.membershipFunctions;
+            if (!exists) console.error(`Missing membership function for ${key}`);
+            return exists;
+        });
     },
 
     // Membuat semua grafik fungsi keanggotaan
     createCharts: function() {
-        this.createSoilMoistureChart();
-        this.createAirTemperatureChart();
-        this.createLightIntensityChart();
-        this.createHumidityChart();
+        console.log('Creating charts with membership functions:', this.membershipFunctions);
+        if (this.membershipFunctions.soil_moisture) {
+            this.createSoilMoistureChart();
+        } else {
+            console.error('Cannot create soil moisture chart: data missing');
+        }
+
+        if (this.membershipFunctions.air_temperature) {
+            this.createAirTemperatureChart();
+        } else {
+            console.error('Cannot create air temperature chart: data missing');
+        }
+
+        if (this.membershipFunctions.light_intensity) {
+            this.createLightIntensityChart();
+        } else {
+            console.error('Cannot create light intensity chart: data missing');
+        }
+
+        if (this.membershipFunctions.humidity) {
+            this.createHumidityChart();
+        } else {
+            console.error('Cannot create humidity chart: data missing');
+        }
     },
 
     // Fungsi untuk menghitung nilai fungsi keanggotaan
@@ -463,6 +500,12 @@ const FuzzyCharts = {
                 break;
             default:
                 return;
+        }
+
+        // Pastikan chart sudah dibuat
+        if (!chart) {
+            console.log(`Chart for ${parameter} is not available yet`);
+            return;
         }
 
         // Perbarui anotasi

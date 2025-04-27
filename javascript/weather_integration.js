@@ -160,7 +160,20 @@ const WeatherIntegration = {
 
                 // Kirim event bahwa data cuaca telah diperbarui
                 const weatherUpdatedEvent = new CustomEvent('weather-updated', {
-                    detail: this.weatherData
+                    detail: {
+                        current: {
+                            temp_c: this.weatherData.current.temp_c,
+                            temperature: this.weatherData.current.temp_c, // Duplikasi untuk kompatibilitas
+                            humidity: this.weatherData.current.humidity,
+                            light_intensity: this.weatherData.current.light_intensity,
+                            soil_moisture: this.weatherData.current.soil_moisture,
+                            condition: this.weatherData.current.condition,
+                            precip_mm: this.weatherData.current.precip_mm,
+                            cloud: this.weatherData.current.cloud
+                        },
+                        forecast: this.weatherData.forecast.forecastday,
+                        location: this.weatherData.location
+                    }
                 });
                 document.dispatchEvent(weatherUpdatedEvent);
 
@@ -430,6 +443,7 @@ const WeatherIntegration = {
     },
 
     // Terapkan data cuaca ke input simulator
+    // Terapkan data cuaca ke input simulator
     applyWeatherToInputs: function() {
         if (!this.weatherData) {
             return;
@@ -472,6 +486,15 @@ const WeatherIntegration = {
                 FuzzyLogic.updateInputValue('air_temperature', this.weatherData.current.temp_c);
                 FuzzyLogic.updateInputValue('light_intensity', this.weatherData.current.light_intensity);
                 FuzzyLogic.updateInputValue('humidity', this.weatherData.current.humidity);
+            }
+
+            // Jika GreenhouseSimulation tersedia, terapkan juga ke simulasi
+            if (typeof GreenhouseSimulation !== 'undefined' && GreenhouseSimulation.simulation && GreenhouseSimulation.simulation.active) {
+                // Kirim data cuaca ke simulasi
+                GreenhouseSimulation.applyWeatherDataToSimulation({
+                    current: this.weatherData.current,
+                    forecast: this.weatherData.forecast.forecastday
+                });
             }
 
             // Tampilkan notifikasi

@@ -28,6 +28,9 @@ const GreenhouseSimulation = {
         // Tambahkan event listeners
         this.attachEventListeners();
 
+        // Tambahkan listener untuk pembaruan data cuaca
+        this.listenForWeatherUpdates();
+
         // Cek apakah ada simulasi yang aktif
         this.checkActiveSimulation();
     },
@@ -325,7 +328,7 @@ const GreenhouseSimulation = {
         if (this.simulation.timeUpdateInterval) {
             clearInterval(this.simulation.timeUpdateInterval);
         }
-    
+
         // Buat interval baru untuk memajukan waktu
         this.simulation.timeUpdateInterval = setInterval(() => {
             // Pastikan simulasi aktif dan mode adaptif aktif
@@ -578,7 +581,7 @@ const GreenhouseSimulation = {
         if (plantDaysElement) plantDaysElement.textContent = `Usia: ${data.days_since_start} hari`;
         if (plantHeightElement) plantHeightElement.textContent = `Tinggi: ${data.plant_height} cm`;
         if (plantHealthElement) plantHealthElement.textContent = `Kesehatan: ${Math.round(data.plant_health)}%`;
-        
+
         // Perbarui health bar
         const healthBar = document.getElementById('health-bar');
         if (healthBar) {
@@ -617,6 +620,160 @@ const GreenhouseSimulation = {
 
         // Perbarui progress stage
         this.updateStageProgress(data.plant_stage);
+    },
+
+    /**
+     * Fungsi untuk mendengarkan pembaruan data cuaca
+     */
+    listenForWeatherUpdates: function() {
+        console.log('Setting up weather update listener');
+        document.addEventListener('weather-updated', (event) => {
+            console.log('Received weather-updated event');
+            if (this.simulation.active && event.detail) {
+                console.log('Applying weather data to simulation:', event.detail);
+                this.applyWeatherDataToSimulation(event.detail);
+            }
+        });
+    },
+
+    /**
+     * Fungsi untuk menerapkan data cuaca ke simulasi
+     */
+    applyWeatherDataToSimulation: function(weatherData) {
+        if (!this.simulation.active || !this.simulation.id) {
+            console.log('No active simulation to update with weather data');
+            return;
+        }
+
+        console.log('Applying weather data to simulation:', weatherData);
+
+        // Siapkan data untuk dikirim ke server
+        const formData = new FormData();
+        formData.append('command', 'update_simulation');
+        formData.append('simulation_id', this.simulation.id);
+
+        // Tambahkan parameter lingkungan dari data cuaca
+        if (weatherData.current) {
+            // Gunakan soil_moisture jika tersedia, jika tidak gunakan perkiraan dari kelembaban udara
+            const soilMoisture = weatherData.current.soil_moisture !== undefined ?
+                weatherData.current.soil_moisture :
+                this.estimateSoilMoistureFromWeather(weatherData.current);
+
+            // Tentukan suhu udara
+            const airTemp = weatherData.current.temp_c !== undefined ?
+                weatherData.current.temp_c :
+                weatherData.current.temperature;
+
+            // Tentukan intensitas cahaya
+            const lightIntensity = weatherData.current.light_intensity !== undefined ?
+                weatherData.current.light_intensity :
+                this.estimateLightIntensityFromWeather(weatherData.current);
+
+            // Tentukan kelembaban udara
+            const humidity = weatherData.current.humidity !== undefined ?
+                weatherData.current.humidity :
+                60; // Default jika tidak tersedia
+
+            formData.append('soil_moisture', soilMoisture);
+            formData.append('air_temperature', airTemp);
+            formData.append('light_intensity', lightIntensity);
+            formData.append('humidity', humidity);
+        }
+
+        // Tampilkan loading
+        this.showLoading();
+
+        // Kirim ke server
+        fetch('php/plant_simulation.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                this.hideLoading();
+
+                if (data.success) {
+                    // Perbarui data simulasi
+                    this.simulation.data = data.simulation_data;
+
+                    // Perbarui UI
+                    this.updateSimulationUI();
+                    this.updateEnvironmentVisualization();
+                    this.updatePlantVisualization();
+
+                    // Tampilkan notifikasi
+                    this.showNotification('Data cuaca berhasil diterapkan ke simulasi', 'success');
+
+                    // Dispatch event untuk komponen lain
+                    const simulationUpdatedEvent = new Event('simulation-updated');
+                    document.dispatchEvent(simulationUpdatedEvent);
+                } else {
+                    this.showNotification('Gagal menerapkan data cuaca: ' + (data.message || 'Unknown error'), 'error');
+                }
+            })
+            .catch(error => {
+                console.error('Error applying weather data to simulation:', error);
+                this.hideLoading();
+                this.showNotification('Error: ' + error.message, 'error');
+            });
+    },
+
+    /**
+     * Estimasi kelembaban tanah dari data cuaca
+     */
+    estimateSoilMoistureFromWeather: function(weatherData) {
+        // Base moisture level
+        let baseMoisture = 50;
+
+        // Adjust based on humidity
+        if (weatherData.humidity) {
+            baseMoisture += (weatherData.humidity - 60) * 0.3;
+        }
+
+        // Adjust based on precipitation
+        if (weatherData.precip_mm) {
+            baseMoisture += weatherData.precip_mm * 2;
+        } else if (weatherData.condition && weatherData.condition.text) {
+            const condition = weatherData.condition.text.toLowerCase();
+            if (condition.includes('hujan') || condition.includes('rain')) {
+                baseMoisture += 15;
+            } else if (condition.includes('gerimis') || condition.includes('drizzle')) {
+                baseMoisture += 8;
+            }
+        }
+
+        // Ensure within range 0-100
+        return Math.min(100, Math.max(0, Math.round(baseMoisture)));
+    },
+
+    /**
+     * Estimasi intensitas cahaya dari data cuaca
+     */
+    estimateLightIntensityFromWeather: function(weatherData) {
+        // Base light intensity
+        let baseIntensity = 500;
+
+        // Adjust based on cloud cover
+        if (weatherData.cloud !== undefined) {
+            baseIntensity = baseIntensity * (1 - weatherData.cloud / 100 * 0.7);
+        }
+
+        // Adjust based on condition
+        if (weatherData.condition && weatherData.condition.text) {
+            const condition = weatherData.condition.text.toLowerCase();
+            if (condition.includes('cerah') || condition.includes('sunny') || condition.includes('clear')) {
+                baseIntensity *= 1.3;
+            } else if (condition.includes('berawan') || condition.includes('cloudy')) {
+                baseIntensity *= 0.7;
+            } else if (condition.includes('hujan') || condition.includes('rain')) {
+                baseIntensity *= 0.4;
+            } else if (condition.includes('badai') || condition.includes('storm')) {
+                baseIntensity *= 0.2;
+            }
+        }
+
+        // Ensure within range 0-1000
+        return Math.min(1000, Math.max(0, Math.round(baseIntensity)));
     },
 
     // Perbarui visualisasi lingkungan

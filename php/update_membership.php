@@ -67,12 +67,26 @@ foreach ($functions as $function_name => $function_data) {
 }
 
 try {
-    // === OPSI 1: Menyimpan di database ===
-    // Cek apakah tabel membership_functions ada, jika tidak, lakukan penyimpanan dengan opsi 2
+    // Cek apakah tabel membership_functions ada, jika tidak, buat tabel
     $tableExistsQuery = "SHOW TABLES LIKE 'membership_functions'";
     $tableExistsStmt = $pdo->query($tableExistsQuery);
     $tableExists = ($tableExistsStmt && $tableExistsStmt->rowCount() > 0);
     
+    if (!$tableExists) {
+        // Buat tabel jika belum ada
+        $createTableQuery = "CREATE TABLE membership_functions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            parameter VARCHAR(50) NOT NULL,
+            functions LONGTEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )";
+        $pdo->exec($createTableQuery);
+        // Sekarang tabel sudah ada
+        $tableExists = true;
+    }
+    
+    // Simpan ke database
     if ($tableExists) {
         // Cek apakah konfigurasi sudah ada di database
         $checkQuery = "SELECT * FROM membership_functions WHERE parameter = ?";
@@ -82,61 +96,44 @@ try {
         if ($stmt->rowCount() > 0) {
             // Update konfigurasi yang ada
             $updateQuery = "UPDATE membership_functions 
-                           SET functions = ?, 
-                               updated_at = CURRENT_TIMESTAMP
-                           WHERE parameter = ?";
+                          SET functions = ?, 
+                              updated_at = CURRENT_TIMESTAMP
+                          WHERE parameter = ?";
             
             $stmt = $pdo->prepare($updateQuery);
             $stmt->execute([json_encode($functions), $parameter]);
         } else {
             // Tambahkan konfigurasi baru
             $insertQuery = "INSERT INTO membership_functions 
-                           (parameter, functions, created_at) 
-                           VALUES (?, ?, CURRENT_TIMESTAMP)";
+                          (parameter, functions) 
+                          VALUES (?, ?)";
             
             $stmt = $pdo->prepare($insertQuery);
             $stmt->execute([$parameter, json_encode($functions)]);
         }
-    } else {
-        // === OPSI 2: Menyimpan di file konfigurasi ===
-        // Buat direktori config jika belum ada
-        $config_dir = 'config';
-        if (!is_dir($config_dir)) {
-            mkdir($config_dir, 0755, true);
+        
+        // Cache update untuk get_data.php
+        $cache_file = 'cache/membership_' . $parameter . '.json';
+        $cache_dir = 'cache';
+        
+        if (!is_dir($cache_dir)) {
+            mkdir($cache_dir, 0755, true);
         }
         
-        // Simpan ke file konfigurasi
-        $config_file = $config_dir . '/membership_functions.json';
-        $current_config = [];
+        file_put_contents($cache_file, json_encode([
+            'parameter' => $parameter,
+            'functions' => $functions,
+            'updated_at' => date('Y-m-d H:i:s')
+        ]));
         
-        if (file_exists($config_file)) {
-            $current_config = json_decode(file_get_contents($config_file), true);
-        }
-        
-        $current_config[$parameter] = $functions;
-        file_put_contents($config_file, json_encode($current_config, JSON_PRETTY_PRINT));
+        // Kembalikan respons sukses
+        echo json_encode([
+            'success' => true, 
+            'message' => 'Fungsi keanggotaan berhasil diperbarui',
+            'parameter' => $parameter,
+            'saved_to' => 'database'
+        ]);
     }
-    
-    // Perbarui cache untuk nilai terbaru
-    $cache_file = 'cache/membership_' . $parameter . '.json';
-    $cache_dir = 'cache';
-    
-    if (!is_dir($cache_dir)) {
-        mkdir($cache_dir, 0755, true);
-    }
-    
-    file_put_contents($cache_file, json_encode([
-        'parameter' => $parameter,
-        'functions' => $functions,
-        'updated_at' => date('Y-m-d H:i:s')
-    ]));
-    
-    // Kembalikan respons sukses
-    echo json_encode([
-        'success' => true, 
-        'message' => 'Fungsi keanggotaan berhasil diperbarui',
-        'parameter' => $parameter
-    ]);
     
 } catch (Exception $e) {
     http_response_code(500);
