@@ -49,6 +49,8 @@ const DashboardExtension = {
             }
         }, 60000); // Perbarui setiap 1 menit
 
+        this.addWeatherUpdateListener();
+
         // Tandai sebagai diinisialisasi
         this.dashboard.initialized = true;
     },
@@ -1327,53 +1329,9 @@ const DashboardExtension = {
      */
     getWeatherDataForDashboard: function() {
         if (typeof WeatherIntegration !== 'undefined' && WeatherIntegration.weatherData) {
-            console.log('Using data from WeatherIntegration for dashboard');
-
-            // Cek apakah modul WeatherIntegration memiliki fungsi getWeatherDataForDashboard
-            if (typeof WeatherIntegration.getWeatherDataForDashboard === 'function') {
-                return WeatherIntegration.getWeatherDataForDashboard();
-            }
-
-            // Kalau tidak, buat format yang sesuai untuk dashboard
-            const weather = WeatherIntegration.weatherData;
-
-            // Format data cuaca saat ini
-            const current = {
-                temperature: weather.current.temp_c,
-                humidity: weather.current.humidity,
-                condition: weather.current.condition.text,
-                location: weather.location.name,
-                light_intensity: weather.current.light_intensity || 500
-            };
-
-            // Format data prakiraan
-            const forecast = [];
-            if (weather.forecast && weather.forecast.forecastday) {
-                weather.forecast.forecastday.forEach(day => {
-                    forecast.push({
-                        date: day.date,
-                        temperature: day.day.maxtemp_c,
-                        humidity: day.day.avghumidity || 60,
-                        condition: day.day.condition.text,
-                        light_intensity: this.estimateLightFromCondition(day.day.condition.text)
-                    });
-                });
-            }
-
-            // Buat analisis dampak cuaca
-            const impact = this.analyzeWeatherImpact(current, forecast);
-
-            // Buat rekomendasi berdasarkan dampak
-            const recommendations = this.generateWeatherRecommendations(impact);
-
-            return {
-                current: current,
-                forecast: forecast,
-                impact: impact,
-                recommendations: recommendations
-            };
+            return WeatherIntegration.getWeatherDataForDashboard();
         } else {
-            console.log('WeatherIntegration not available, using default weather data');
+            console.warn('WeatherIntegration not available, using default weather data');
             return this.getDefaultWeatherData();
         }
     },
@@ -2140,6 +2098,16 @@ const DashboardExtension = {
             const item = document.createElement('li');
             item.textContent = recommendation;
             recommendationsList.appendChild(item);
+        });
+    },
+
+    addWeatherUpdateListener: function() {
+        document.addEventListener('weather-updated', (event) => {
+            console.log('Weather data updated, refreshing dashboard');
+            if (this.dashboard.initialized) {
+                // Perbarui data dashboard karena data cuaca diperbarui
+                this.loadDashboardData();
+            }
         });
     },
 
