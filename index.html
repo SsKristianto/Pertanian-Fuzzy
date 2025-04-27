@@ -408,16 +408,34 @@
 
             // Lazy-load initialization for configuration
             document.querySelector('[data-tab="config-panel"]').addEventListener('click', function() {
-                if (!configInitialized) {
-                    // Initialize configuration
-                    setTimeout(() => {
-                        // One at a time with delays to avoid conflicts
-                        setTimeout(() => FuzzyConfig.initialize(), 100);
-                        setTimeout(() => AdaptiveLearning.initialize(), 300);
-                        configInitialized = true;
-                    }, 100);
-                }
-            });
+            if (!configInitialized) {
+                // Initialize configuration
+                setTimeout(() => {
+                    const membershipPlaceholder = document.getElementById('membership-config');
+                    const rulesPlaceholder = document.getElementById('rules-config');
+                    const adaptivePlaceholder = document.getElementById('adaptive-config');
+
+                    if (!membershipPlaceholder || !rulesPlaceholder || !adaptivePlaceholder) {
+                        const container = document.querySelector('.container');
+                        if (container) {
+                            const configSection = document.createElement('div');
+                            configSection.className = 'config-section';
+                            configSection.innerHTML = `
+                                <div id="membership-config" class="config-section-content active"></div>
+                                <div id="rules-config" class="config-section-content"></div>
+                                <div id="adaptive-config" class="config-section-content"></div>
+                            `;
+                            container.appendChild(configSection);
+                        }
+                    }
+
+                    // One at a time with delays to avoid conflicts
+                    setTimeout(() => FuzzyConfig.initialize(), 100);
+                    setTimeout(() => AdaptiveLearning.initialize(), 300);
+                    configInitialized = true;
+                }, 100);
+            }
+        });
         });
     </script>
 </body>

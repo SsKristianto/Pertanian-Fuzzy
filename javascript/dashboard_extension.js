@@ -28,8 +28,19 @@ const DashboardExtension = {
         // Tambahkan event listener
         this.attachEventListeners();
 
+        // Tambahkan event listener untuk pembaruan simulasi
+        document.addEventListener('simulation-updated', () => {
+            this.loadDashboardData();
+        });
+
+        console.log('Adding simulation-updated event listener');
+        document.addEventListener('simulation-updated', () => {
+            console.log('simulation-updated event received, refreshing dashboard');
+            this.loadDashboardData();
+        });
+
         // Muat data awal
-        this.loadDashboardData();
+        //this.loadDashboardData();
 
         // Set interval untuk memperbarui dashboard secara otomatis
         this.dashboard.updateInterval = setInterval(() => {
@@ -1101,10 +1112,13 @@ const DashboardExtension = {
 
         // Range time selector
         const timeRangeSelect = document.getElementById('time-range-select');
-        if (timeRangeSelect) {
-            timeRangeSelect.addEventListener('change', () => {
-                this.dashboard.timeRange = timeRangeSelect.value;
-                this.loadDashboardData();
+    if (timeRangeSelect) {
+        timeRangeSelect.addEventListener('change', () => {
+            console.log('Time range changed to:', timeRangeSelect.value);
+            this.dashboard.timeRange = timeRangeSelect.value;
+            
+            // Perbarui semua grafik
+            this.loadDashboardData();
             });
         }
 
@@ -1190,48 +1204,156 @@ const DashboardExtension = {
                 break;
         }
     },
-
+    
+    
     // Muat data dashboard
     loadDashboardData: function() {
-        // Cek apakah ada simulasi aktif
-        if (typeof GreenhouseSimulation === 'undefined' || !GreenhouseSimulation.simulation.active) {
-            console.log('No active simulation, using sample data');
-            this.loadSampleData();
-            return;
-        }
-
-        // Ambil data dari simulasi aktif
-        const simulationId = GreenhouseSimulation.simulation.id;
-
-        // Kirim request ke server
-        fetch('php/dashboard_data.php', {
+        console.log("Attempting to load dashboard data with range:", this.dashboard.timeRange);
+        
+        // Cek apakah ada simulasi aktif dan memiliki log
+        if (typeof GreenhouseSimulation !== 'undefined' && 
+            GreenhouseSimulation.simulation && 
+            GreenhouseSimulation.simulation.active === true && 
+            GreenhouseSimulation.simulation.data) {
+            
+            console.log('Found active simulation, using simulation data');
+            
+            // Gunakan data langsung dari GreenhouseSimulation
+            const simulationData = GreenhouseSimulation.simulation.data;
+            
+            // Minta data log simulasi
+            // Kita perlu mengambil log simulasi melalui AJAX request
+            fetch('php/plant_simulation.php', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded'
                 },
-                body: `command=get_dashboard_data&simulation_id=${simulationId}&days=${this.dashboard.timeRange}`
+                body: `command=get_plant_state&simulation_id=${GreenhouseSimulation.simulation.id}`
             })
             .then(response => response.json())
-            .then(data => {
-                if (data.success) {
+            .then(logData => {
+                if (logData.success && logData.simulation_log && logData.simulation_log.length > 0) {
+                    console.log('Retrieved simulation log data:', logData.simulation_log.length, 'entries');
+                    
+                    // Proses data log
+                    const historyDates = [];
+                    const historyHealth = [];
+                    const historyGrowth = [];
+                    const historySoil = [];
+                    const historyTemp = [];
+                    const historyLight = [];
+                    const historyHumidity = [];
+                    const historyActions = [];
+                    
+                    // Petakan data log ke format yang dibutuhkan dashboard
+                    logData.simulation_log.forEach(log => {
+                        historyDates.push(log.log_date);
+                        historyHealth.push(log.plant_health);
+                        historyGrowth.push(log.growth_rate);
+                        historySoil.push(log.soil_moisture);
+                        historyTemp.push(log.air_temperature);
+                        historyLight.push(log.light_intensity);
+                        historyHumidity.push(log.humidity);
+                        
+                        // Tambahkan data tindakan kontrol
+                        historyActions.push({
+                            date: log.log_date,
+                            stage: log.plant_stage,
+                            irrigation: log.irrigation_duration ? this.getIrrigationText(log.irrigation_duration) : 'sedang',
+                            temperature: log.temperature_setting ? this.getTemperatureText(log.temperature_setting) : 'mempertahankan',
+                            light: log.light_control ? this.getLightText(log.light_control) : 'sedang',
+                            health: log.plant_health
+                        });
+                    });
+                    
+                    // Buat struktur data yang dibutuhkan dashboard
+                    const dashboardData = {
+                        success: true,
+                        current: simulationData,
+                        trends: {
+                            health_trend: this.calculateTrend(historyHealth),
+                            growth_trend: this.calculateTrend(historyGrowth),
+                            fruit_trend: 0 // Perlu data historis buah untuk menghitung tren
+                        },
+                        optimal: simulationData.optimal_conditions || {
+                            soil_moisture: 50,
+                            air_temperature: 25,
+                            light_intensity: 500,
+                            humidity: 60
+                        },
+                        history: {
+                            dates: historyDates,
+                            health: historyHealth,
+                            growth_rate: historyGrowth,
+                            soil_moisture: historySoil,
+                            air_temperature: historyTemp,
+                            light_intensity: historyLight,
+                            humidity: historyHumidity,
+                            actions: historyActions
+                        },
+                        weather: this.dashboard.data ? this.dashboard.data.weather : {}
+                    };
+                    
                     // Simpan data
-                    this.dashboard.data = data;
-
+                    this.dashboard.data = dashboardData;
+                    
                     // Perbarui UI
                     this.updateDashboardUI();
                 } else {
-                    console.error('Error loading dashboard data:', data.message);
-
-                    // Gunakan data sampel sebagai fallback
+                    console.log('No simulation log available, using sample data');
                     this.loadSampleData();
                 }
             })
             .catch(error => {
-                console.error('Error fetching dashboard data:', error);
-
-                // Gunakan data sampel sebagai fallback
+                console.error('Error fetching simulation log:', error);
                 this.loadSampleData();
             });
+        } else {
+            console.log('No active simulation detected, using sample data');
+            this.loadSampleData();
+        }
+    },
+    
+    getIrrigationText: function(value) {
+        if (typeof value === 'string') return value;
+        
+        if (value <= 15) return 'tidak_ada';
+        if (value <= 35) return 'singkat';
+        if (value <= 65) return 'sedang';
+        return 'lama';
+    },
+
+    getTemperatureText: function(value) {
+        if (typeof value === 'string') return value;
+        
+        if (value <= -4) return 'menurunkan';
+        if (value >= 4) return 'menaikkan';
+        return 'mempertahankan';
+    },
+    
+    getLightText: function(value) {
+        if (typeof value === 'string') return value;
+        
+        if (value <= 15) return 'mati';
+        if (value <= 35) return 'redup';
+        if (value <= 65) return 'sedang';
+        return 'terang';
+    },
+
+    calculateTrend: function(dataArray) {
+        if (!dataArray || dataArray.length < 2) return 0;
+        
+        // Ambil data dalam rentang yang sesuai dengan dashboard.timeRange
+        const timeRange = parseInt(this.dashboard.timeRange);
+        const relevantData = dataArray.slice(-timeRange);
+        
+        if (relevantData.length < 2) return 0;
+        
+        // Hitung perubahan
+        const latestValue = relevantData[relevantData.length - 1];
+        const earliestValue = relevantData[0];
+        
+        return latestValue - earliestValue;
     },
 
     // Muat data sampel untuk testing
@@ -1819,33 +1941,47 @@ const DashboardExtension = {
     // Perbarui grafik tanah dan udara
     updateSoilAirChart: function() {
         if (!this.dashboard.data || !this.dashboard.data.history) return;
-
+    
         const history = this.dashboard.data.history;
-
+        
+        // Persiapkan data berdasarkan rentang waktu yang dipilih
+        const timeRange = parseInt(this.dashboard.timeRange);
+        let dates = [...history.dates];
+        let soilMoistureData = [...history.soil_moisture];
+        let airTemperatureData = [...history.air_temperature];
+        
+        // Batasi data sesuai rentang waktu yang dipilih
+        if (dates.length > timeRange) {
+            dates = dates.slice(-timeRange);
+            soilMoistureData = soilMoistureData.slice(-timeRange);
+            airTemperatureData = airTemperatureData.slice(-timeRange);
+        }
+    
         // Jika grafik sudah dibuat, perbarui data
         if (this.dashboard.charts.soilAirChart) {
-            this.dashboard.charts.soilAirChart.data.labels = history.dates.map(date => this.formatDate(date));
-            this.dashboard.charts.soilAirChart.data.datasets[0].data = history.soil_moisture;
-            this.dashboard.charts.soilAirChart.data.datasets[1].data = history.air_temperature;
+            this.dashboard.charts.soilAirChart.data.labels = dates.map(date => this.formatDate(date));
+            this.dashboard.charts.soilAirChart.data.datasets[0].data = soilMoistureData;
+            this.dashboard.charts.soilAirChart.data.datasets[1].data = airTemperatureData;
+            this.dashboard.charts.soilAirChart.options.plugins.title.text = `Data ${timeRange} Hari Terakhir`;
             this.dashboard.charts.soilAirChart.update();
         } else {
             // Buat grafik baru
-            this.createSoilAirChart(history);
+            this.createSoilAirChart(dates, soilMoistureData, airTemperatureData, timeRange);
         }
     },
-
-    // Buat grafik tanah dan udara
-    createSoilAirChart: function(history) {
+    
+    // Buat grafik tanah dan udara yang dimodifikasi
+    createSoilAirChart: function(dates, soilMoistureData, airTemperatureData, timeRange) {
         const ctx = document.getElementById('soil-air-chart');
         if (!ctx) return;
-
+    
         this.dashboard.charts.soilAirChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: history.dates.map(date => this.formatDate(date)),
+                labels: dates.map(date => this.formatDate(date)),
                 datasets: [{
                         label: 'Kelembaban Tanah (%)',
-                        data: history.soil_moisture,
+                        data: soilMoistureData,
                         borderColor: '#795548',
                         backgroundColor: 'rgba(121, 85, 72, 0.1)',
                         tension: 0.4,
@@ -1854,7 +1990,7 @@ const DashboardExtension = {
                     },
                     {
                         label: 'Suhu Udara (°C)',
-                        data: history.air_temperature,
+                        data: airTemperatureData,
                         borderColor: '#F44336',
                         backgroundColor: 'rgba(244, 67, 54, 0.1)',
                         tension: 0.4,
@@ -1895,42 +2031,60 @@ const DashboardExtension = {
                     tooltip: {
                         mode: 'index',
                         intersect: false
+                    },
+                    title: {
+                        display: true,
+                        text: `Data ${timeRange} Hari Terakhir`
                     }
                 }
             }
         });
     },
-
-    // Perbarui grafik cahaya dan kelembaban
+    
+    // Perbaikan untuk grafik intensitas cahaya dan kelembaban agar sesuai dengan rentang waktu yang dipilih
     updateLightHumidityChart: function() {
         if (!this.dashboard.data || !this.dashboard.data.history) return;
-
+    
         const history = this.dashboard.data.history;
-
+        
+        // Persiapkan data berdasarkan rentang waktu yang dipilih
+        const timeRange = parseInt(this.dashboard.timeRange);
+        let dates = [...history.dates];
+        let lightIntensityData = [...history.light_intensity];
+        let humidityData = [...history.humidity];
+        
+        // Batasi data sesuai rentang waktu yang dipilih
+        if (dates.length > timeRange) {
+            dates = dates.slice(-timeRange);
+            lightIntensityData = lightIntensityData.slice(-timeRange);
+            humidityData = humidityData.slice(-timeRange);
+        }
+    
         // Jika grafik sudah dibuat, perbarui data
         if (this.dashboard.charts.lightHumidityChart) {
-            this.dashboard.charts.lightHumidityChart.data.labels = history.dates.map(date => this.formatDate(date));
-            this.dashboard.charts.lightHumidityChart.data.datasets[0].data = history.light_intensity;
-            this.dashboard.charts.lightHumidityChart.data.datasets[1].data = history.humidity;
+            this.dashboard.charts.lightHumidityChart.data.labels = dates.map(date => this.formatDate(date));
+            this.dashboard.charts.lightHumidityChart.data.datasets[0].data = lightIntensityData;
+            this.dashboard.charts.lightHumidityChart.data.datasets[1].data = humidityData;
+            this.dashboard.charts.lightHumidityChart.options.plugins.title.text = `Data ${timeRange} Hari Terakhir`;
             this.dashboard.charts.lightHumidityChart.update();
         } else {
             // Buat grafik baru
-            this.createLightHumidityChart(history);
+            this.createLightHumidityChart(dates, lightIntensityData, humidityData, timeRange);
         }
     },
-
-    // Buat grafik cahaya dan kelembaban
-    createLightHumidityChart: function(history) {
+    
+    // Buat grafik cahaya dan kelembaban yang dimodifikasi
+    createLightHumidityChart: function(dates, lightIntensityData, humidityData, timeRange) {
         const ctx = document.getElementById('light-humidity-chart');
         if (!ctx) return;
-
+    
         this.dashboard.charts.lightHumidityChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: history.dates.map(date => this.formatDate(date)),
+                labels: dates.map(date => this.formatDate(date)),
                 datasets: [{
                         label: 'Intensitas Cahaya (lux)',
-                        data: history.light_intensity,
+                        data: lightIntensityData,
                         borderColor: '#FF9800',
                         backgroundColor: 'rgba(255, 152, 0, 0.1)',
                         tension: 0.4,
@@ -1939,7 +2093,7 @@ const DashboardExtension = {
                     },
                     {
                         label: 'Kelembaban Udara (%)',
-                        data: history.humidity,
+                        data: humidityData,
                         borderColor: '#2196F3',
                         backgroundColor: 'rgba(33, 150, 243, 0.1)',
                         tension: 0.4,
@@ -1980,6 +2134,10 @@ const DashboardExtension = {
                     tooltip: {
                         mode: 'index',
                         intersect: false
+                    },
+                    title: {
+                        display: true,
+                        text: `Data ${timeRange} Hari Terakhir`
                     }
                 }
             }

@@ -14,6 +14,7 @@ const GreenhouseSimulation = {
         timeSpeed: 1, // 1 = normal, 2 = cepat, 0.5 = lambat
         adaptiveMode: false,
         environmentUpdateInterval: null,
+        timeUpdateInterval: null,
         plantUpdateInterval: null
     },
 
@@ -319,11 +320,29 @@ const GreenhouseSimulation = {
             });
     },
 
+    startTimeUpdateInterval: function() {
+        // Hentikan interval sebelumnya jika ada
+        if (this.simulation.timeUpdateInterval) {
+            clearInterval(this.simulation.timeUpdateInterval);
+        }
+    
+        // Buat interval baru untuk memajukan waktu
+        this.simulation.timeUpdateInterval = setInterval(() => {
+            // Pastikan simulasi aktif dan mode adaptif aktif
+            if (this.simulation.active && this.simulation.adaptiveMode) {
+                // Maju 1 hari sesuai kecepatan waktu
+                const daysToAdvance = this.simulation.timeSpeed;
+                this.advanceSimulationTime(daysToAdvance);
+            }
+        }, 5000); // Interval 5 detik, sesuaikan kebutuhan
+    },
+
+
     // Mulai simulasi baru
     startNewSimulation: function() {
         // Tampilkan loading
         this.showLoading();
-
+        this.startTimeUpdateInterval();
         // Buat nama tanaman acak
         const plantNames = ["Roma", "Cherry", "Beef", "Plum", "Grape", "Heirloom"];
         const randomName = plantNames[Math.floor(Math.random() * plantNames.length)];
@@ -346,6 +365,7 @@ const GreenhouseSimulation = {
                     this.simulation.active = true;
                     this.simulation.id = data.simulation_id;
                     this.simulation.data = data.simulation_data;
+                    this.startTimeUpdateInterval();
 
                     // Perbarui UI
                     this.updateSimulationUI();
@@ -408,6 +428,7 @@ const GreenhouseSimulation = {
                 if (data.success) {
                     // Perbarui data simulasi
                     this.simulation.data = data.simulation_data;
+                    this.startTimeUpdateInterval();
 
                     // Perbarui UI
                     this.updateSimulationUI();
@@ -442,6 +463,17 @@ const GreenhouseSimulation = {
         const toggleButton = document.getElementById('toggle-adaptive');
         if (toggleButton) {
             toggleButton.classList.toggle('active', this.simulation.adaptiveMode);
+        }
+
+        // Jika mode adaptif diaktifkan, mulai interval
+        if (this.simulation.adaptiveMode) {
+            this.startTimeUpdateInterval();
+        } else {
+            // Hentikan interval jika dinonaktifkan
+            if (this.simulation.timeUpdateInterval) {
+                clearInterval(this.simulation.timeUpdateInterval);
+                this.simulation.timeUpdateInterval = null;
+            }
         }
 
         // Tampilkan notifikasi
@@ -479,6 +511,7 @@ const GreenhouseSimulation = {
                 if (data.success) {
                     // Perbarui data simulasi
                     this.simulation.data = data.simulation_data;
+                    this.startTimeUpdateInterval();
 
                     // Perbarui UI
                     this.updateSimulationUI();
@@ -536,12 +569,16 @@ const GreenhouseSimulation = {
         const plantDaysElement = document.getElementById('plant-days');
         const plantHeightElement = document.getElementById('plant-height');
         const plantHealthElement = document.getElementById('plant-health');
+        console.log("Triggering simulation-updated event");
+        const updateEvent = new Event('simulation-updated');
+        document.dispatchEvent(updateEvent);
+
 
         if (plantStageElement) plantStageElement.textContent = `Fase: ${this.getPlantStageText(data.plant_stage)}`;
         if (plantDaysElement) plantDaysElement.textContent = `Usia: ${data.days_since_start} hari`;
         if (plantHeightElement) plantHeightElement.textContent = `Tinggi: ${data.plant_height} cm`;
         if (plantHealthElement) plantHealthElement.textContent = `Kesehatan: ${Math.round(data.plant_health)}%`;
-
+        
         // Perbarui health bar
         const healthBar = document.getElementById('health-bar');
         if (healthBar) {

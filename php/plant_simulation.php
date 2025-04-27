@@ -78,7 +78,7 @@ function initializeSimulation() {
         $insertQuery = "INSERT INTO plant_simulation 
                        (name, variety, plant_stage, plant_health, growth_rate, days_in_current_stage,
                         soil_moisture, air_temperature, light_intensity, humidity, 
-                        start_date, current_date, is_active) 
+                        start_date, `current_date`, is_active) 
                        VALUES 
                        (?, ?, 'seedling', 100, 1.0, 0,
                         50, 25, 500, 60, 
@@ -211,7 +211,7 @@ function updateSimulation() {
                         days_in_current_stage = ?,
                         plant_height = ?,
                         fruit_count = ?,
-                        current_date = ?
+                        `current_date` = ?
                         WHERE id = ?";
                         
         $updateStmt = $pdo->prepare($updateQuery);
@@ -313,7 +313,7 @@ function resetSimulation() {
                      humidity = 60,
                      plant_height = 5,
                      fruit_count = 0,
-                     current_date = start_date
+                     `current_date` = start_date
                      WHERE id = ?";
                      
         $stmt = $pdo->prepare($resetQuery);
@@ -437,7 +437,7 @@ function advanceSimulationTime() {
                         days_in_current_stage = ?,
                         plant_height = ?,
                         fruit_count = ?,
-                        current_date = ?
+                        `current_date` = ?
                         WHERE id = ?";
                         
         $updateStmt = $pdo->prepare($updateQuery);

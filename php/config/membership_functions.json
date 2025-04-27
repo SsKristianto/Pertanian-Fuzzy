@@ -98,5 +98,33 @@
                 100
             ]
         }
+    },
+    "humidity": {
+        "rendah": {
+            "type": "trapezoid",
+            "points": [
+                0,
+                0,
+                30,
+                40
+            ]
+        },
+        "sedang": {
+            "type": "triangle",
+            "points": [
+                30,
+                50,
+                70
+            ]
+        },
+        "tinggi": {
+            "type": "trapezoid",
+            "points": [
+                60,
+                70,
+                100,
+                100
+            ]
+        }
     }
 }
