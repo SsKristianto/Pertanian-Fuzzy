@@ -12,6 +12,58 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <!-- Chart.js untuk visualisasi -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.7.0/chart.min.js"></script>
+
+    <style>
+        .button-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .button-container button {
+            flex: 1;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .button-container .calculate-btn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        .button-container .calculate-btn:hover {
+            background-color: #45a049;
+        }
+
+        .button-container .save-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        .button-container .save-btn:hover {
+            background-color: #1e87db;
+        }
+
+        .button-container .apply-btn {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .button-container .apply-btn:hover {
+            background-color: #f57c00;
+        }
+
+        .button-container button i {
+            margin-right: 8px;
+        }
+    </style>
 </head>
 
 <body>
@@ -89,12 +141,17 @@
                             </div>
                         </div>
 
-                        <button type="button" id="calculateButton" class="primary-button">
+                        <div class="button-container">
+                            <button class="calculate-btn" id="calculateButton">
                                 <i class="fas fa-calculator"></i> Hitung Output
                             </button>
-                        <button type="button" id="saveButton" class="secondary-button">
+                            <button class="save-btn" id="saveButton">
                                 <i class="fas fa-save"></i> Simpan Pengaturan
                             </button>
+                            <button class="apply-btn" id="applyButton">
+                                <i class="fas fa-play"></i> Terapkan ke Simulasi
+                            </button>
+                        </div>
                     </form>
                 </div>
 

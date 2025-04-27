@@ -22,9 +22,16 @@ const UIInteraction = {
         this.animateOnLoad();
     },
 
+    
     // Tambahkan event listener
     attachEventListeners: function() {
         // Disable default form submission
+
+        // Event listener untuk tombol apply
+        document.getElementById('applyButton').addEventListener('click', function() {
+            UIInteraction.applyInputsToSimulation();
+        });
+
         document.getElementById('parameterForm').addEventListener('submit', function(e) {
             e.preventDefault();
         });
@@ -127,6 +134,25 @@ const UIInteraction = {
                 this.style.boxShadow = '0 2px 5px rgba(0, 0, 0, 0.05)';
             });
         });
+    },
+
+    // Terapkan nilai input ke simulasi
+    applyInputsToSimulation: function() {
+        if (typeof GreenhouseSimulation !== 'undefined' && GreenhouseSimulation.simulation.active) {
+            // Ambil nilai input
+            const soilMoisture = parseFloat(document.getElementById('soil_moisture_value').value);
+            const airTemperature = parseFloat(document.getElementById('air_temperature_value').value);
+            const lightIntensity = parseFloat(document.getElementById('light_intensity_value').value);
+            const humidity = parseFloat(document.getElementById('humidity_value').value);
+
+            // Kirim nilai input ke simulasi
+            GreenhouseSimulation.updateSimulationInputs(soilMoisture, airTemperature, lightIntensity, humidity);
+
+            // Tampilkan notifikasi
+            this.showNotification('Nilai parameter input diterapkan ke simulasi', 'success');
+        } else {
+            this.showNotification('Tidak ada simulasi aktif', 'warning');
+        }
     },
 
     // Tampilkan indikator perhitungan
