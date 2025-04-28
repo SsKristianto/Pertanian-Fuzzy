@@ -29,8 +29,8 @@ Sistem Kontrol Cerdas Tanaman Tomat adalah aplikasi berbasis web yang menerapkan
 ### 1. Clone Repository
 
 ```bash
-git clone https://github.com/username/sistem-kontrol-cerdas-tomat.git
-cd sistem-kontrol-cerdas-tomat
+git clone https://github.com/SsKristianto/Pertanian-Fuzzy.git
+cd Pertanian-Fuzzy
 ```
 
 ### 2. Setup Database (Bisa Dengan Import Dari Database.md Maupun Dari File .sql)
