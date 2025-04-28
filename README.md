@@ -33,14 +33,14 @@ git clone https://github.com/username/sistem-kontrol-cerdas-tomat.git
 cd sistem-kontrol-cerdas-tomat
 ```
 
-### 2. Setup Database (Bisa Dengan Import Dari Database.md)
+### 2. Setup Database (Bisa Dengan Import Dari Database.md Maupun Dari File .sql)
 
 ```bash
 # Buat database baru
 mysql -u root -p -e "CREATE DATABASE fuzzy_tomato_system"
 
 # Import skema database
-mysql -u root -p fuzzy_tomato_system < database/schema.sql
+mysql -u root -p fuzzy_tomato_system < database/fuzzy_tomato_system.sql
 
 # (Opsional) Import data contoh
 mysql -u root -p fuzzy_tomato_system < database/sample_data.sql

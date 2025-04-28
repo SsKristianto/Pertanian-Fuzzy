@@ -1,1 +1,1 @@
-{"parameter":"soil_moisture","functions":{"kering":{"type":"trapezoid","points":[0,0,35,40]},"sedang":{"type":"triangle","points":[30,50,70]},"basah":{"type":"trapezoid","points":[60,70,100,100]}},"updated_at":"2025-04-28 02:47:19"}
+{"parameter":"soil_moisture","functions":{"kering":{"type":"trapezoid","points":[0,0,35,40]},"sedang":{"type":"triangle","points":[30,60,80]},"basah":{"type":"trapezoid","points":[60,70,100,100]}},"updated_at":"2025-04-28 12:18:49"}

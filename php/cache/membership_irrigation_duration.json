@@ -1,0 +1,1 @@
+{"parameter":"irrigation_duration","functions":{"tidak_ada":{"type":"trapezoid","points":[0,0,10,20]},"singkat":{"type":"triangle","points":[10,25,40]},"sedang":{"type":"triangle","points":[30,50,70]},"lama":{"type":"trapezoid","points":[60,80,100,100]}},"updated_at":"2025-04-28 12:30:00"}

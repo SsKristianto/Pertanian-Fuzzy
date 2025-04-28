@@ -20,7 +20,7 @@ const WeatherIntegration = {
     // Konfigurasi
     config: {
         // API Key untuk WeatherAPI.com (ganti dengan API key Anda)
-        apiKey: "ab0f72154b424c60a9b70250252504",
+        apiKey: "API_KEY_DISINI",
 
         // Location (default: Palangkaraya)
         location: "Palangkaraya",
