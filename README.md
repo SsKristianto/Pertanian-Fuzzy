@@ -244,7 +244,3 @@ database/
 ## 📝 Lisensi
 
 Proyek ini dilisensikan di bawah [MIT License](LICENSE).
-
-## 👥 Kontak
-
-Untuk pertanyaan atau dukungan, silakan hubungi [your-email@example.com](mailto:your-email@example.com).
