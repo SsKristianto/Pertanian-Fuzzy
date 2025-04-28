@@ -20,8 +20,9 @@ const FuzzyConfig = {
     initialize: function() {
         console.log('Initializing fuzzy configuration interface...');
 
-        // Tambahkan panel konfigurasi
-        this.createConfigPanel();
+        // Tambahkan konten ke container yang sudah ada
+        this.createMembershipContent();
+        this.createRulesContent();
 
         // Tambahkan stylesheet
         this.addConfigStylesheet();
@@ -36,148 +37,131 @@ const FuzzyConfig = {
         this.loadFuzzyRules();
     },
 
-    // Buat panel konfigurasi
-    createConfigPanel: function() {
-        // Cek apakah panel sudah ada
-        if (document.querySelector('.config-section')) {
+    // Buat konten fungsi keanggotaan untuk container yang sudah ada
+    createMembershipContent: function() {
+        // Cek apakah container ada
+        const membershipContainer = document.getElementById('membership-config');
+        if (!membershipContainer) {
+            console.error('Container membership-config tidak ditemukan!');
             return;
         }
 
-        const configSection = document.createElement('div');
-        configSection.className = 'config-section';
-        configSection.innerHTML = `
-            <h2><i class="fas fa-cogs"></i> Konfigurasi Sistem Fuzzy</h2>
-            
-            <div class="config-tabs">
-                <button class="config-tab active" data-tab="membership">
-                    <i class="fas fa-chart-line"></i> Fungsi Keanggotaan
-                </button>
-                <button class="config-tab" data-tab="rules">
-                    <i class="fas fa-list-ol"></i> Aturan Fuzzy
-                </button>
-            </div>
-            
-            <div class="config-content">
-                <!-- Tab Fungsi Keanggotaan -->
-                <div class="config-tab-content active" id="membership-tab">
-                    <div class="membership-controls">
-                        <div class="input-select">
-                            <label>Parameter:</label>
-                            <select id="membership-param">
-                                <option value="soil_moisture">Kelembaban Tanah</option>
-                                <option value="air_temperature">Suhu Udara</option>
-                                <option value="light_intensity">Intensitas Cahaya</option>
-                                <option value="humidity">Kelembaban Udara</option>
-                                <option value="irrigation_duration">Durasi Irigasi</option>
-                                <option value="temperature_setting">Pengaturan Suhu</option>
-                                <option value="light_control">Kontrol Cahaya</option>
-                            </select>
-                        </div>
-                        
-                        <button id="edit-membership-btn" class="config-button">
-                            <i class="fas fa-edit"></i> Edit Fungsi
-                        </button>
-                    </div>
-                    
-                    <div class="membership-editor">
-                        <div class="membership-chart-container">
-                            <canvas id="membership-editor-chart"></canvas>
-                        </div>
-                        
-                        <div class="membership-form" id="membership-form">
-                            <!-- Form akan dihasilkan secara dinamis -->
-                        </div>
-                    </div>
+        // Buat konten untuk fungsi keanggotaan
+        const membershipContent = document.createElement('div');
+        membershipContent.innerHTML = `
+            <div class="membership-controls">
+                <div class="input-select">
+                    <label>Parameter:</label>
+                    <select id="membership-param">
+                        <option value="soil_moisture">Kelembaban Tanah</option>
+                        <option value="air_temperature">Suhu Udara</option>
+                        <option value="light_intensity">Intensitas Cahaya</option>
+                        <option value="humidity">Kelembaban Udara</option>
+                        <option value="irrigation_duration">Durasi Irigasi</option>
+                        <option value="temperature_setting">Pengaturan Suhu</option>
+                        <option value="light_control">Kontrol Cahaya</option>
+                    </select>
                 </div>
                 
-                <!-- Tab Aturan Fuzzy -->
-                <div class="config-tab-content" id="rules-tab">
-                    <div class="rules-controls">
-                        <button id="add-rule-btn" class="config-button primary">
-                            <i class="fas fa-plus"></i> Tambah Aturan
-                        </button>
-                        
-                        <div class="rules-filter">
-                            <label>Filter:</label>
-                            <select id="rules-filter">
-                                <option value="all">Semua Aturan</option>
-                                <option value="custom">Kustom</option>
-                                <option value="adaptive">Adaptif</option>
-                                <option value="seedling">Fase Bibit</option>
-                                <option value="vegetative">Fase Vegetatif</option>
-                                <option value="flowering">Fase Berbunga</option>
-                                <option value="fruiting">Fase Berbuah</option>
-                                <option value="harvesting">Fase Panen</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div class="rules-table-container">
-                        <table class="rules-table" id="config-rules-table">
-                            <thead>
-                                <tr>
-                                    <th>ID</th>
-                                    <th>Jika</th>
-                                    <th>Maka</th>
-                                    <th>Kepercayaan</th>
-                                    <th>Tipe</th>
-                                    <th>Aksi</th>
-                                </tr>
-                            </thead>
-                            <tbody id="config-rules-body">
-                                <!-- Isi tabel akan dihasilkan secara dinamis -->
-                                <tr>
-                                    <td colspan="6" class="loading-row">Memuat aturan...</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                    
-                    <div class="rules-summary">
-                        <div class="summary-item">
-                            <span class="summary-label">Total Aturan:</span>
-                            <span class="summary-value" id="total-rules">0</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Aturan Adaptif:</span>
-                            <span class="summary-value" id="adaptive-rules">0</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="summary-label">Aturan Kustom:</span>
-                            <span class="summary-value" id="custom-rules">0</span>
-                        </div>
-                    </div>
+                <div class="button-group">
+                    <button id="edit-membership-btn" class="config-button">
+                        <i class="fas fa-edit"></i> Edit Fungsi
+                    </button>
+                    <button id="save-membership-btn" class="config-button primary" style="display: none;">
+                        <i class="fas fa-save"></i> Simpan Perubahan
+                    </button>
+                    <button id="cancel-edit-btn" class="config-button" style="display: none;">
+                        <i class="fas fa-times"></i> Batal
+                    </button>
+                </div>
+            </div>
+            
+            <div class="membership-editor">
+                <div class="membership-chart-container">
+                    <canvas id="membership-editor-chart"></canvas>
+                </div>
+                
+                <div class="membership-form" id="membership-form">
+                    <!-- Form akan dihasilkan secara dinamis -->
                 </div>
             </div>
         `;
 
+        // Tambahkan konten ke container
+        membershipContainer.appendChild(membershipContent);
+    },
 
-
-        // Sisipkan setelah dashboard atau di akhir container
-        const dashboardSection = document.querySelector('.dashboard-extension-container');
-        const mainContainer = document.querySelector('.container');
-
-        const simulationContainer = document.querySelector('.simulation-container');
-
-        if (simulationContainer) {
-            simulationContainer.insertAdjacentElement('afterend', configSection);
-        } else if (dashboardSection) {
-            dashboardSection.insertAdjacentElement('afterend', configSection);
-        } else {
-            const container = document.querySelector('.container');
-            if (container) {
-                container.insertAdjacentElement('beforeend', configSection);
-            }
+    // Buat konten aturan fuzzy untuk container yang sudah ada
+    createRulesContent: function() {
+        // Cek apakah container ada
+        const rulesContainer = document.getElementById('rules-config');
+        if (!rulesContainer) {
+            console.error('Container rules-config tidak ditemukan!');
+            return;
         }
 
+        // Buat konten untuk aturan fuzzy
+        const rulesContent = document.createElement('div');
+        rulesContent.innerHTML = `
+            <div class="rules-controls">
+                <button id="add-rule-btn" class="config-button primary">
+                    <i class="fas fa-plus"></i> Tambah Aturan
+                </button>
+                
+                <div class="rules-filter">
+                    <label>Filter:</label>
+                    <select id="rules-filter">
+                        <option value="all">Semua Aturan</option>
+                        <option value="custom">Kustom</option>
+                        <option value="adaptive">Adaptif</option>
+                        <option value="seedling">Fase Bibit</option>
+                        <option value="vegetative">Fase Vegetatif</option>
+                        <option value="flowering">Fase Berbunga</option>
+                        <option value="fruiting">Fase Berbuah</option>
+                        <option value="harvesting">Fase Panen</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="rules-table-container">
+                <table class="rules-table" id="config-rules-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Jika</th>
+                            <th>Maka</th>
+                            <th>Kepercayaan</th>
+                            <th>Tipe</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="config-rules-body">
+                        <!-- Isi tabel akan dihasilkan secara dinamis -->
+                        <tr>
+                            <td colspan="6" class="loading-row">Memuat aturan...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="rules-summary">
+                <div class="summary-item">
+                    <span class="summary-label">Total Aturan:</span>
+                    <span class="summary-value" id="total-rules">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Aturan Adaptif:</span>
+                    <span class="summary-value" id="adaptive-rules">0</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Aturan Kustom:</span>
+                    <span class="summary-value" id="custom-rules">0</span>
+                </div>
+            </div>
+        `;
 
-        if (dashboardSection) {
-            dashboardSection.parentNode.insertBefore(configSection, dashboardSection.nextSibling);
-        } else {
-            mainContainer.appendChild(configSection);
-        }
-
-
+        // Tambahkan konten ke container
+        rulesContainer.appendChild(rulesContent);
     },
 
     // Tambahkan stylesheet untuk konfigurasi
@@ -192,69 +176,11 @@ const FuzzyConfig = {
         style.id = 'config-styles';
         style.textContent = `
             /* Bagian konfigurasi */
-            .config-section {
+            .config-section-content {
+                padding: 15px;
                 background-color: var(--card-bg);
-                padding: 20px;
                 border-radius: 8px;
-                box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
-                margin-bottom: 30px;
-            }
-            
-            .config-section h2 {
-                color: var(--primary-color);
-                margin-bottom: 20px;
-                display: flex;
-                align-items: center;
-            }
-            
-            .config-section h2 i {
-                margin-right: 10px;
-                font-size: 1.5rem;
-            }
-            
-            /* Tab konfigurasi */
-            .config-tabs {
-                display: flex;
-                margin-bottom: 20px;
-                border-bottom: 1px solid #ddd;
-            }
-            
-            .config-tab {
-                padding: 10px 15px;
-                background-color: transparent;
-                border: none;
-                border-bottom: 3px solid transparent;
-                cursor: pointer;
-                font-weight: 500;
-                color: #555;
-                display: flex;
-                align-items: center;
-                gap: 5px;
-                transition: all 0.3s ease;
-            }
-            
-            .config-tab:hover {
-                color: var(--primary-color);
-            }
-            
-            .config-tab.active {
-                color: var(--primary-color);
-                border-bottom-color: var(--primary-color);
-            }
-            
-            /* Konten tab */
-            .config-tab-content {
-                display: none;
-            }
-            
-            .config-tab-content.active {
-                display: block;
-                animation: fadeIn 0.3s ease;
-            }
-            
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
             }
             
             /* Kontrol fungsi keanggotaan */
@@ -284,6 +210,11 @@ const FuzzyConfig = {
                 border: 1px solid #ddd;
                 border-radius: 5px;
                 background-color: white;
+            }
+
+            .button-group {
+                display: flex;
+                gap: 8px;
             }
             
             .config-button {
@@ -667,6 +598,48 @@ const FuzzyConfig = {
                     gap: 10px;
                 }
             }
+
+            /* Loader untuk indikator proses */
+            .loading-indicator {
+                display: inline-block;
+                width: 1em;
+                height: 1em;
+                border: 2px solid rgba(255,255,255,0.3);
+                border-radius: 50%;
+                border-top-color: #fff;
+                animation: spin 1s ease-in-out infinite;
+                margin-right: 8px;
+            }
+            
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+
+            /* Pesan status feedback */
+            .status-message {
+                margin-top: 10px;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 0.9rem;
+            }
+            
+            .status-message.success {
+                background-color: rgba(76, 175, 80, 0.1);
+                color: #2e7d32;
+                border: 1px solid rgba(76, 175, 80, 0.2);
+            }
+            
+            .status-message.error {
+                background-color: rgba(244, 67, 54, 0.1);
+                color: #d32f2f;
+                border: 1px solid rgba(244, 67, 54, 0.2);
+            }
+            
+            .status-message.info {
+                background-color: rgba(33, 150, 243, 0.1);
+                color: #1976d2;
+                border: 1px solid rgba(33, 150, 243, 0.2);
+            }
         `;
 
         // Tambahkan ke head
@@ -675,16 +648,6 @@ const FuzzyConfig = {
 
     // Tambahkan event listener
     attachEventListeners: function() {
-        // Tab switching
-        const tabButtons = document.querySelectorAll('.config-tab');
-
-        tabButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const tab = button.getAttribute('data-tab');
-                this.changeTab(tab);
-            });
-        });
-
         // Parameter selection
         const membershipParam = document.getElementById('membership-param');
         if (membershipParam) {
@@ -698,7 +661,23 @@ const FuzzyConfig = {
         const editMembershipBtn = document.getElementById('edit-membership-btn');
         if (editMembershipBtn) {
             editMembershipBtn.addEventListener('click', () => {
-                this.toggleMembershipEditing();
+                this.enterEditMode();
+            });
+        }
+
+        // Save membership button
+        const saveMembershipBtn = document.getElementById('save-membership-btn');
+        if (saveMembershipBtn) {
+            saveMembershipBtn.addEventListener('click', () => {
+                this.saveMembershipChanges();
+            });
+        }
+
+        // Cancel edit button
+        const cancelEditBtn = document.getElementById('cancel-edit-btn');
+        if (cancelEditBtn) {
+            cancelEditBtn.addEventListener('click', () => {
+                this.cancelEdit();
             });
         }
 
@@ -717,39 +696,23 @@ const FuzzyConfig = {
                 this.filterRules(rulesFilter.value);
             });
         }
-    },
 
-    // Ubah tab konfigurasi
-    changeTab: function(tab) {
-        // Perbarui status tab aktif
-        this.config.activeTab = tab;
+        // Attach event listeners for config section tabs (these are already in index.html)
+        // We're just making sure they work with our new content
+        const configSectionTabs = document.querySelectorAll('.config-section-tab');
+        configSectionTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Get the section this tab is for
+                const section = this.getAttribute('data-section');
 
-        // Perbarui class tombol tab
-        const tabButtons = document.querySelectorAll('.config-tab');
-        tabButtons.forEach(button => {
-            if (button.getAttribute('data-tab') === tab) {
-                button.classList.add('active');
-            } else {
-                button.classList.remove('active');
-            }
+                // Update our active tab if it's our tab
+                if (section === 'membership-config') {
+                    FuzzyConfig.config.activeTab = 'membership';
+                } else if (section === 'rules-config') {
+                    FuzzyConfig.config.activeTab = 'rules';
+                }
+            });
         });
-
-        // Perbarui class konten tab
-        const tabContents = document.querySelectorAll('.config-tab-content');
-        tabContents.forEach(content => {
-            if (content.id === tab + '-tab') {
-                content.classList.add('active');
-            } else {
-                content.classList.remove('active');
-            }
-        });
-
-        // Perbarui konten tab spesifik
-        if (tab === 'membership') {
-            this.updateMembershipForm();
-        } else if (tab === 'rules') {
-            this.updateRulesTable();
-        }
     },
 
     // Muat fungsi keanggotaan
@@ -766,6 +729,7 @@ const FuzzyConfig = {
             })
             .catch(error => {
                 console.error('Error:', error);
+                this.showNotification('Gagal memuat fungsi keanggotaan: ' + error.message, 'error');
             });
     },
 
@@ -780,10 +744,12 @@ const FuzzyConfig = {
                     this.updateRulesSummary();
                 } else {
                     console.error('Error loading fuzzy rules:', data.message);
+                    this.showNotification('Gagal memuat aturan fuzzy: ' + data.message, 'error');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
+                this.showNotification('Gagal memuat aturan fuzzy: ' + error.message, 'error');
             });
     },
 
@@ -813,6 +779,9 @@ const FuzzyConfig = {
         const paramType = isOutput ? 'Output' : 'Input';
         formHtml += `<p class="param-type">${paramType} Parameter</p>`;
 
+        // Status message container
+        formHtml += `<div id="membership-status-message" class="status-message" style="display: none;"></div>`;
+
         // Generate form untuk setiap fungsi keanggotaan
         for (const [name, func] of Object.entries(functions)) {
             formHtml += `
@@ -835,6 +804,9 @@ const FuzzyConfig = {
                         <input type="number" value="${func.points[i]}" 
                             id="${param}_${name}_point_${i}" 
                             ${isDisabled ? 'disabled' : ''}
+                            data-param="${param}"
+                            data-function="${name}"
+                            data-point="${i}"
                             onchange="FuzzyConfig.updatePoint('${param}', '${name}', ${i}, this.value)">
                     </div>
                 `;
@@ -873,31 +845,60 @@ const FuzzyConfig = {
         }
     },
 
-    // Toggle mode editing fungsi keanggotaan
-    toggleMembershipEditing: function() {
-        this.config.isEditing = !this.config.isEditing;
+    // Masuk ke mode pengeditan fungsi keanggotaan
+    enterEditMode: function() {
+        this.config.isEditing = true;
 
-        // Perbarui tombol
-        const editBtn = document.getElementById('edit-membership-btn');
-        if (editBtn) {
-            if (this.config.isEditing) {
-                editBtn.innerHTML = '<i class="fas fa-save"></i> Simpan Perubahan';
-                editBtn.classList.add('primary');
-            } else {
-                // Simpan perubahan sebelum menonaktifkan mode editing
-                this.saveMembershipChanges();
+        // Show/hide the appropriate buttons
+        document.getElementById('edit-membership-btn').style.display = 'none';
+        document.getElementById('save-membership-btn').style.display = 'flex';
+        document.getElementById('cancel-edit-btn').style.display = 'flex';
 
-                editBtn.innerHTML = '<i class="fas fa-edit"></i> Edit Fungsi';
-                editBtn.classList.remove('primary');
-            }
-        }
+        // Enable all input fields
+        const inputs = document.querySelectorAll('#membership-form input');
+        inputs.forEach(input => {
+            input.disabled = false;
+        });
 
-        // Perbarui form dengan status editing baru
-        this.updateMembershipForm();
+        // Show message to user
+        const statusMessage = document.getElementById('membership-status-message');
+        statusMessage.textContent = 'Mode pengeditan aktif. Ubah nilai sesuai kebutuhan dan klik Simpan Perubahan.';
+        statusMessage.className = 'status-message info';
+        statusMessage.style.display = 'block';
+    },
+
+    // Batalkan pengeditan
+    cancelEdit: function() {
+        this.config.isEditing = false;
+
+        // Show/hide the appropriate buttons
+        document.getElementById('edit-membership-btn').style.display = 'flex';
+        document.getElementById('save-membership-btn').style.display = 'none';
+        document.getElementById('cancel-edit-btn').style.display = 'none';
+
+        // Reload the data to revert changes
+        this.loadMembershipFunctions();
+
+        // Show message to user
+        const statusMessage = document.getElementById('membership-status-message');
+        statusMessage.textContent = 'Perubahan dibatalkan.';
+        statusMessage.className = 'status-message info';
+        statusMessage.style.display = 'block';
+
+        // Hide message after a delay
+        setTimeout(() => {
+            statusMessage.style.display = 'none';
+        }, 3000);
     },
 
     // Simpan perubahan fungsi keanggotaan
     saveMembershipChanges: function() {
+        // Tampilkan indikator loading pada tombol
+        const saveButton = document.getElementById('save-membership-btn');
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<span class="loading-indicator"></span>Menyimpan...';
+        saveButton.disabled = true;
+
         // Siapkan data untuk dikirim
         const data = {
             parameter: this.config.selectedInput,
@@ -914,15 +915,60 @@ const FuzzyConfig = {
             })
             .then(response => response.json())
             .then(data => {
+                // Kembalikan tombol ke keadaan semula
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+
                 if (data.success) {
-                    this.showNotification('Fungsi keanggotaan berhasil diperbarui', 'success');
+                    // Tampilkan pesan sukses
+                    const statusMessage = document.getElementById('membership-status-message');
+                    statusMessage.textContent = 'Fungsi keanggotaan berhasil disimpan!';
+                    statusMessage.className = 'status-message success';
+                    statusMessage.style.display = 'block';
+
+                    // Tutup mode pengeditan
+                    this.config.isEditing = false;
+                    document.getElementById('edit-membership-btn').style.display = 'flex';
+                    document.getElementById('save-membership-btn').style.display = 'none';
+                    document.getElementById('cancel-edit-btn').style.display = 'none';
+
+                    // Disable inputs
+                    const inputs = document.querySelectorAll('#membership-form input');
+                    inputs.forEach(input => {
+                        input.disabled = true;
+                    });
+
+                    // Juga tampilkan notifikasi normal
+                    this.showNotification('Fungsi keanggotaan berhasil disimpan!', 'success');
+
+                    // Sembunyikan pesan setelah beberapa detik
+                    setTimeout(() => {
+                        statusMessage.style.display = 'none';
+                    }, 5000);
                 } else {
+                    // Tampilkan pesan error
+                    const statusMessage = document.getElementById('membership-status-message');
+                    statusMessage.textContent = 'Error: ' + data.message;
+                    statusMessage.className = 'status-message error';
+                    statusMessage.style.display = 'block';
+
                     this.showNotification('Error: ' + data.message, 'error');
                 }
             })
             .catch(error => {
+                // Kembalikan tombol ke keadaan semula
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+
                 console.error('Error saving membership changes:', error);
-                this.showNotification('Error menyimpan perubahan', 'error');
+
+                // Tampilkan pesan error
+                const statusMessage = document.getElementById('membership-status-message');
+                statusMessage.textContent = 'Error: ' + error.message;
+                statusMessage.className = 'status-message error';
+                statusMessage.style.display = 'block';
+
+                this.showNotification('Error menyimpan perubahan: ' + error.message, 'error');
             });
     },
 
@@ -1045,6 +1091,10 @@ const FuzzyConfig = {
     // Perbarui tabel aturan
     updateRulesTable: function() {
         if (!this.config.rules || this.config.rules.length === 0) {
+            const rulesBody = document.getElementById('config-rules-body');
+            if (rulesBody) {
+                rulesBody.innerHTML = '<tr><td colspan="6" class="loading-row">Tidak ada aturan yang tersedia</td></tr>';
+            }
             return;
         }
 
@@ -1275,11 +1325,13 @@ const FuzzyConfig = {
                                 <input type="hidden" id="rule-id" value="">
                                 <input type="hidden" id="rule-is-adaptive" value="0">
                             </div>
+
+                            <div id="rule-status-message" class="status-message" style="display: none;"></div>
                         </form>
-                    </div>
-                    <div class="modal-footer">
+                        <div class="modal-footer">
                         <button class="config-button" id="rule-cancel-btn">Batal</button>
                         <button class="config-button primary" id="rule-save-btn">Simpan Aturan</button>
+                    </div>
                     </div>
                 </div>
             `;
@@ -1302,6 +1354,14 @@ const FuzzyConfig = {
             saveBtn.addEventListener('click', () => {
                 this.saveRule();
             });
+        }
+
+        // Reset status message
+        const statusMessage = document.getElementById('rule-status-message');
+        if (statusMessage) {
+            statusMessage.style.display = 'none';
+            statusMessage.textContent = '';
+            statusMessage.className = 'status-message';
         }
 
         // Isi form jika mengedit aturan
@@ -1366,9 +1426,19 @@ const FuzzyConfig = {
         // Validasi data
         if (!soilMoisture || !airTemperature || !lightIntensity || !humidity ||
             !irrigation || !temperature || !light) {
-            this.showNotification('Semua parameter utama harus diisi', 'error');
+            // Tampilkan pesan error di modal
+            const statusMessage = document.getElementById('rule-status-message');
+            statusMessage.textContent = 'Semua parameter utama harus diisi';
+            statusMessage.className = 'status-message error';
+            statusMessage.style.display = 'block';
             return;
         }
+
+        // Tampilkan loading pada tombol save
+        const saveButton = document.getElementById('rule-save-btn');
+        const originalText = saveButton.innerHTML;
+        saveButton.innerHTML = '<span class="loading-indicator"></span>Menyimpan...';
+        saveButton.disabled = true;
 
         // Siapkan data untuk dikirim
         const formData = new FormData();
@@ -1396,17 +1466,49 @@ const FuzzyConfig = {
             })
             .then(response => response.json())
             .then(data => {
+                // Kembalikan tombol ke keadaan semula
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+
                 if (data.success) {
+                    // Tampilkan pesan sukses di modal
+                    const statusMessage = document.getElementById('rule-status-message');
+                    statusMessage.textContent = ruleId ? 'Aturan berhasil diperbarui!' : 'Aturan baru berhasil ditambahkan!';
+                    statusMessage.className = 'status-message success';
+                    statusMessage.style.display = 'block';
+
+                    // Tampilkan notifikasi umum
                     this.showNotification(ruleId ? 'Aturan berhasil diperbarui' : 'Aturan baru berhasil ditambahkan', 'success');
-                    this.closeRuleModal();
-                    this.loadFuzzyRules(); // Muat ulang aturan
+
+                    // Muat ulang aturan setelah delay singkat
+                    setTimeout(() => {
+                        this.loadFuzzyRules();
+                        this.closeRuleModal();
+                    }, 1500);
                 } else {
+                    // Tampilkan pesan error di modal
+                    const statusMessage = document.getElementById('rule-status-message');
+                    statusMessage.textContent = 'Error: ' + data.message;
+                    statusMessage.className = 'status-message error';
+                    statusMessage.style.display = 'block';
+
                     this.showNotification('Error: ' + data.message, 'error');
                 }
             })
             .catch(error => {
+                // Kembalikan tombol ke keadaan semula
+                saveButton.innerHTML = originalText;
+                saveButton.disabled = false;
+
                 console.error('Error saving rule:', error);
-                this.showNotification('Error menyimpan aturan', 'error');
+
+                // Tampilkan pesan error di modal
+                const statusMessage = document.getElementById('rule-status-message');
+                statusMessage.textContent = 'Error menyimpan aturan: ' + error.message;
+                statusMessage.className = 'status-message error';
+                statusMessage.style.display = 'block';
+
+                this.showNotification('Error menyimpan aturan: ' + error.message, 'error');
             });
     },
 
@@ -1420,6 +1522,9 @@ const FuzzyConfig = {
         if (!confirm('Anda yakin ingin menghapus aturan ini?')) {
             return;
         }
+
+        // Tampilkan notifikasi proses
+        this.showNotification('Menghapus aturan...', 'info');
 
         // Siapkan data untuk dikirim
         const formData = new FormData();
@@ -1442,7 +1547,7 @@ const FuzzyConfig = {
             })
             .catch(error => {
                 console.error('Error deleting rule:', error);
-                this.showNotification('Error menghapus aturan', 'error');
+                this.showNotification('Error menghapus aturan: ' + error.message, 'error');
             });
     },
 

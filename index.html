@@ -19,7 +19,7 @@
             gap: 10px;
             margin-top: 15px;
         }
-
+        
         .button-container button {
             flex: 1;
             padding: 10px 15px;
@@ -32,34 +32,34 @@
             align-items: center;
             justify-content: center;
         }
-
+        
         .button-container .calculate-btn {
             background-color: #4CAF50;
             color: white;
         }
-
+        
         .button-container .calculate-btn:hover {
             background-color: #45a049;
         }
-
+        
         .button-container .save-btn {
             background-color: #2196F3;
             color: white;
         }
-
+        
         .button-container .save-btn:hover {
             background-color: #1e87db;
         }
-
+        
         .button-container .apply-btn {
             background-color: #FF9800;
             color: white;
         }
-
+        
         .button-container .apply-btn:hover {
             background-color: #f57c00;
         }
-
+        
         .button-container button i {
             margin-right: 8px;
         }
@@ -69,7 +69,7 @@
 <body>
     <div class="container">
         <header>
-            <h1><i class="fas fa-seedling"></i> Sistem Kontrol Cerdas Tanaman Tomat</h1>
+            <h1><i class="fas fa-seedling"></i> Sistem Kontrol Cerdas Buah-Buahan</h1>
             <p>Sistem Manajemen Berbasis Logika Fuzzy dengan Pembelajaran Adaptif</p>
         </header>
 
@@ -507,6 +507,20 @@
                         setTimeout(() => AdaptiveLearning.initialize(), 500);
                         configInitialized = true;
                     }, 200);
+                }
+            });
+
+            // Tambahkan ini di bawah <script> fuzzy_config.js
+            document.addEventListener('DOMContentLoaded', function() {
+                console.log('DOM fully loaded');
+                // Cek apakah FuzzyConfig ada
+                if (typeof FuzzyConfig !== 'undefined') {
+                    console.log('FuzzyConfig found, initializing...');
+                    setTimeout(() => {
+                        FuzzyConfig.initialize();
+                    }, 1000);
+                } else {
+                    console.error('FuzzyConfig not found!');
                 }
             });
         });

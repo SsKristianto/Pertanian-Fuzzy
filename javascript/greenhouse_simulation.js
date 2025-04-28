@@ -907,33 +907,33 @@ const GreenhouseSimulation = {
             console.log('Tidak ada simulasi aktif');
             return;
         }
-    
+
         // Kirim permintaan ke server untuk memperbarui nilai input
         fetch('php/plant_simulation.php', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: `command=update_simulation&simulation_id=${this.simulation.id}&soil_moisture=${soilMoisture}&air_temperature=${airTemperature}&light_intensity=${lightIntensity}&humidity=${humidity}`
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                // Perbarui data simulasi
-                this.simulation.data = data.simulation_data;
-    
-                // Perbarui UI
-                this.updateSimulationUI();
-    
-                // Perbarui tampilan simulasi
-                this.updateEnvironmentVisualization();
-            } else {
-                console.log('Gagal memperbarui nilai input simulasi:', data.message);
-            }
-        })
-        .catch(error => {
-            console.error('Error updating simulation inputs:', error);
-        });
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: `command=update_simulation&simulation_id=${this.simulation.id}&soil_moisture=${soilMoisture}&air_temperature=${airTemperature}&light_intensity=${lightIntensity}&humidity=${humidity}`
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Perbarui data simulasi
+                    this.simulation.data = data.simulation_data;
+
+                    // Perbarui UI
+                    this.updateSimulationUI();
+
+                    // Perbarui tampilan simulasi
+                    this.updateEnvironmentVisualization();
+                } else {
+                    console.log('Gagal memperbarui nilai input simulasi:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error updating simulation inputs:', error);
+            });
     },
 
     // Perbarui visualisasi hujan
